@@ -16,6 +16,8 @@ BLOQUE_SERVIDOR = """
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
+    volumes: 
+      - ./server/config.ini:/config.ini
 """
 
 BLOQUE_REDES = """
@@ -41,6 +43,8 @@ def bloque_cliente(n):
       - testing_net
     depends_on:
       - server
+    volumes:
+      - ./client/config.yaml:/config.yaml
 """
 
 if __name__ == "__main__":
