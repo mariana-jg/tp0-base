@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/op/go-logging"
@@ -23,6 +26,8 @@ type ClientConfig struct {
 type Client struct {
 	config ClientConfig
 	conn   net.Conn
+	// flag para salir del loop principal
+	done chan struct{}
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -30,7 +35,17 @@ type Client struct {
 func NewClient(config ClientConfig) *Client {
 	client := &Client{
 		config: config,
+		done:   make(chan struct{}),
 	}
+	// canal donde se envia cuando el proceso recibe un SIGTERM
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGTERM)
+	// rutina que se desbloquea cuando llega un SIGTERM, espera esa senial (corre en paralelo)
+	go func() {
+		<-signalChan
+		close(client.done)
+		log.Info("action: exit | result: success")
+	}()
 	return client
 }
 
@@ -50,11 +65,38 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+func (c *Client) debeTerminar() bool {
+	select {
+	case <-c.done:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c *Client) esperaShutdown(d time.Duration) bool {
+	// Chequeo entre esperas
+	select {
+	//Canal se cierra por un SIGTERM, interrumpo
+	case <-c.done:
+		return true
+	// si no llego senial, espero un tiempo y despues continuo
+	// se saca el sleep porque sino no se enteraria del shutdown hasta que se despierte
+	case <-time.After(d):
+		return false
+	}
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+		// Chequeo antes de conectarme
+		if c.debeTerminar() {
+			return
+		}
+
 		// Create the connection the server in every loop iteration. Send an
 		c.createClientSocket()
 
@@ -81,8 +123,10 @@ func (c *Client) StartClientLoop() {
 			msg,
 		)
 
-		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
+		// Chequeo entre espera
+		if c.esperaShutdown(c.config.LoopPeriod) {
+			return
+		}
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
