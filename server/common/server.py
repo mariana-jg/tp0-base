@@ -12,6 +12,10 @@ class Server:
         self._running = True
         signal.signal(signal.SIGTERM, self.shutdown)
 
+    """
+    Se contempla cierre de los file descriptors antes de que el thread de la aplicacion principal muera.
+    """
+
     def shutdown(self, signum, frame):
         self._running = False
         self._server_socket.close()
