@@ -10,7 +10,7 @@ class Server:
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._running = True
-        signal.signal(signal.SIGTERM, self.shutodwn)
+        signal.signal(signal.SIGTERM, self.shutdown)
 
     def shutdown(self, signum, frame):
         self._running = False
