@@ -15,7 +15,7 @@ class Server:
     def shutdown(self, signum, frame):
         self._running = False
         self._server_socket.close()
-        logging.info(f'action: exit | result: sucess')
+        logging.info("action: exit | result: success")
 
     def run(self):
         """
