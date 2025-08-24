@@ -197,3 +197,9 @@ Para cumplir con el objetivo del ejercicio, se abre el archivo (con `with open` 
 
 `./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
 
+### Ejercicio N°2:
+Para el cumplimiento de este ejercicio, dentro del script de Python `mi-generador.py`, se agregó como propiedad al servicio de cliente y servidor un `volumes`. Se configuró para que cada uno de los servicios tome su archivo de configuración (`config.yaml` para el cliente y `config.ini` para el servidor) como volume, para que la información de esos archivos se persista fuera del container. Además, se eliminaron las variables de entorno que tenían precedencia sobre los archivos de configuración. 
+
+#### Ejecución
+
+`./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
