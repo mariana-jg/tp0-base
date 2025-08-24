@@ -62,7 +62,6 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
-/*
 func (c *Client) mustStop() bool {
 	select {
 	case <-c.done:
@@ -72,19 +71,12 @@ func (c *Client) mustStop() bool {
 	}
 }
 
-func (c *Client) awaitShutdown(d time.Duration) bool {
-	select {
-	case <-c.done:
-		return true
-	case <-time.After(d):
-		return false
-	}
-}*/
-
-// StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) MakeBet(bet *protocol.Bet) bool {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
+	if c.mustStop() {
+		return false
+	}
 
 	message, err := bet.ToBytes()
 	if err != nil {
@@ -92,30 +84,38 @@ func (c *Client) MakeBet(bet *protocol.Bet) bool {
 		return false
 	}
 
-	select {
-	case <-c.done:
+	c.createClientSocket()
+
+	defer c.conn.Close()
+
+	err = avoidShortWrites(c.conn, message)
+	if err != nil {
+		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
 		return false
-	default:
-		c.createClientSocket()
-		defer c.conn.Close()
+	}
+	ack, err := avoidShortReads(c.conn, 1)
+	if err != nil {
+		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+			c.config.ID,
+			err,
+		)
+		return false
+	}
 
-		err := avoidShortWrites(c.conn, message)
-		if err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v", c.config.ID, err)
-			return false
-		}
-		confirmation, err := avoidShortReads(c.conn, 1)
-		if err != nil {
-			log.Errorf("action: read_confirmation | result: fail | client_id: %v | error: %v", c.config.ID, err)
-			return false
-		}
-
-		if confirmation[0] == 1 {
-			log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v", bet.Document, bet.Number)
-			return true
-		} else {
-			log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v", bet.Document, bet.Number)
-			return false
-		}
+	if ack[0] == 1 && len(ack) == 1 {
+		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v",
+			bet.Document,
+			bet.Number,
+		)
+		return true
+	} else {
+		log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",
+			bet.Document,
+			bet.Number,
+		)
+		return false
 	}
 }
