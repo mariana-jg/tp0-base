@@ -203,3 +203,9 @@ Para el cumplimiento de este ejercicio, dentro del script de Python `mi-generado
 #### Ejecución
 
 `./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
+
+### Ejercicio N°3:
+Para el cumplimiento de este ejercicio, se crea el script de bash `validar-echo-server.sh` pedido, dentro del mismo se define un mensaje para enviar y se obtiene el puerto y la IP del servidor utilizando grep y extrayendo los valores. 
+
+Luego se lanza un contenedor efímero de busybox (imagen de linux minimalista) que ya trae incorporado netcat. Se conecta a la red interna `tp0_testing_net` y dentro del contenedor se ejecuta `"echo '$message' | nc $SERVER_IP $SERVER_PORT"`, con este comando se genera el mensaje y se manda a netcat, abriendo una conexión con el servidor y enviándole ese mensaje. `nc` devuelve lo que el servidor responda, guardándolo en la variable answer. Por último, se realiza la verificación de que el server devolvió el mismo mensaje.
+
