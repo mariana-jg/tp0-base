@@ -37,10 +37,8 @@ func NewClient(config ClientConfig) *Client {
 		config: config,
 		done:   make(chan struct{}),
 	}
-	// canal donde se envia cuando el proceso recibe un SIGTERM
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM)
-	// rutina que se desbloquea cuando llega un SIGTERM, espera esa senial (corre en paralelo)
 	go func() {
 		<-signalChan
 		close(client.done)
@@ -75,13 +73,9 @@ func (c *Client) mustStop() bool {
 }
 
 func (c *Client) awaitShutdown(d time.Duration) bool {
-	// Chequeo entre esperas
 	select {
-	//Canal se cierra por un SIGTERM, interrumpo
 	case <-c.done:
 		return true
-	// si no llego senial, espero un tiempo y despues continuo
-	// se saca el sleep porque sino no se enteraria del shutdown hasta que se despierte
 	case <-time.After(d):
 		return false
 	}
@@ -92,7 +86,6 @@ func (c *Client) StartClientLoop() {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
-		// Chequeo antes de conectarme
 		if c.mustStop() {
 			return
 		}
@@ -123,7 +116,6 @@ func (c *Client) StartClientLoop() {
 			msg,
 		)
 
-		// Chequeo entre espera
 		if c.awaitShutdown(c.config.LoopPeriod) {
 			return
 		}
