@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/7574-sistemas-distribuidos/docker-compose-init/client/common"
+	"github.com/7574-sistemas-distribuidos/docker-compose-init/protocol"
 )
 
 var log = logging.MustGetLogger("log")
@@ -90,6 +92,18 @@ func PrintConfig(v *viper.Viper) {
 	)
 }
 
+func LoadBet(agencyString string) (*protocol.Bet, error) {
+	agency, _ := strconv.Atoi(agencyString)
+	name := os.Getenv("NOMBRE")
+	lastname := os.Getenv("APELLIDO")
+	document, _ := strconv.Atoi(os.Getenv("DOCUMENTO"))
+	birthdate := os.Getenv("NACIMIENTO")
+	number, _ := strconv.Atoi(os.Getenv("NUMERO"))
+
+	bet := protocol.NewBet(uint8(agency), name, lastname, uint64(document), birthdate, uint16(number))
+	return bet, nil
+}
+
 func main() {
 	v, err := InitConfig()
 	if err != nil {
@@ -110,6 +124,11 @@ func main() {
 		LoopPeriod:    v.GetDuration("loop.period"),
 	}
 
+	bet, err := LoadBet(clientConfig.ID)
+	if err != nil {
+		log.Criticalf("%s", err)
+	}
+
 	client := common.NewClient(clientConfig)
-	client.StartClientLoop()
+	client.MakeBet(bet)
 }

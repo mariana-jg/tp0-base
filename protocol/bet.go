@@ -17,6 +17,17 @@ type Bet struct {
 	Number uint16
 }
 
+func NewBet(agency uint8, name string, lastname string, document uint64, birthdate string, number uint16) *Bet {
+	return &Bet{
+		Agency:    agency,
+		Name:      name,
+		Lastname:  lastname,
+		Document:  document,
+		Birthdate: birthdate,
+		Number:    number,
+	}
+}
+
 func (bp Bet) ToBytes() ([]byte, error) {
 
 	var payload bytes.Buffer
@@ -69,5 +80,4 @@ func (bp Bet) ToBytes() ([]byte, error) {
 	frame.Write(data)
 
 	return frame.Bytes(), nil
-
 }
