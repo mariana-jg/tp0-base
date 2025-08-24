@@ -216,3 +216,8 @@ Para el cumplimiento de este ejercicio, se modificaron los sistemas de cliente y
 Se añade un nuevo flag `_running`, reemplazando el `while true` que controlaba el bucle principal. Ante la notificación de una señal SIGTERM (por ejemplo con `docker compose down -t <N>`), se llama a la función `shutdown(self, signum, frame)`, esta función pone en false el `running` y cierra el socket de escucha del server. Además, cierra todas las conexiones de clientes que sigan abiertas.
 
 Además, se configura `accept()` con `settimeout(1)` para que el servidor despierte periódicamente, detecte el shutdown y termine dentro del *tiempo de gracia* -t antes de que Docker envíe SIGKILL.
+
+#### Cliente
+Dentro del struct del cliente se define un canal de señales interno `done` que se utiliza para notificar el apagado del cliente. En la inicialización, se define un canal de señales del SO `signalChan`, que se le notificará cuando se envíe un SIGTERM, allí se define una go routine que corre en paralelo al bucle principal y espera un `SIGTERM` en `signalChan`. Cuando la señal llega, cierra el canal `done`, despertando al loop para que termine de forma ordenada.
+
+En la función principal del cliente, tenemos dos funciones que chequean el shutdown. La primera, mustStop, chequea antes de crear el socket del cliente y la segunda, awaitShutdown, asegura que el cliente no quede dormido si llega la señal (el select elige lo que pase primero: `done` se cierra o pasó el tiempo).
