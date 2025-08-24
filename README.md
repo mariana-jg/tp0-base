@@ -209,3 +209,10 @@ Para el cumplimiento de este ejercicio, se crea el script de bash `validar-echo-
 
 Luego se lanza un contenedor efímero de busybox (imagen de linux minimalista) que ya trae incorporado netcat. Se conecta a la red interna `tp0_testing_net` y dentro del contenedor se ejecuta `"echo '$message' | nc $SERVER_IP $SERVER_PORT"`, con este comando se genera el mensaje y se manda a netcat, abriendo una conexión con el servidor y enviándole ese mensaje. `nc` devuelve lo que el servidor responda, guardándolo en la variable answer. Por último, se realiza la verificación de que el server devolvió el mismo mensaje.
 
+### Ejercicio N°4:
+Para el cumplimiento de este ejercicio, se modificaron los sistemas de cliente y servidor para que se logre un graceful shutdown al recibir `SIGTERM`. En la consigna, se recomienda investigar sobre el flag `-t` del comando `docker compose down`. Ese flag determina la espera en segundos que se da para que el proceso termine por su cuenta, si después de ese tiempo sigue vivo, Docker envía `SIGKILL`, matándolo inmediatamente.
+
+#### Servidor
+Se añade un nuevo flag `_running`, reemplazando el `while true` que controlaba el bucle principal. Ante la notificación de una señal SIGTERM (por ejemplo con `docker compose down -t <N>`), se llama a la función `shutdown(self, signum, frame)`, esta función pone en false el `running` y cierra el socket de escucha del server. Además, cierra todas las conexiones de clientes que sigan abiertas.
+
+Además, se configura `accept()` con `settimeout(1)` para que el servidor despierte periódicamente, detecte el shutdown y termine dentro del *tiempo de gracia* -t antes de que Docker envíe SIGKILL.
