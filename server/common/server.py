@@ -1,6 +1,9 @@
 import socket
 import logging
 import signal
+from common.utils import *
+from common.socket_utils import *
+from common.protocol_codec import *
 
 
 class Server:
@@ -37,8 +40,6 @@ class Server:
         finishes, servers starts to accept new connections again
         """
 
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server
         while self._running:
             try:
                 client_sock = self.__accept_new_connection()
@@ -58,12 +59,12 @@ class Server:
         """
         self._client_sockets.append(client_sock)
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
+            bet = decode_bet(client_sock)
             addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
+            logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
+            store_bets([bet])
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+            avoid_short_writes(client_sock, struct.pack('>B', 1))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
