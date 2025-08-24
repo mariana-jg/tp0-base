@@ -65,7 +65,7 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
-func (c *Client) debeTerminar() bool {
+func (c *Client) mustStop() bool {
 	select {
 	case <-c.done:
 		return true
@@ -74,7 +74,7 @@ func (c *Client) debeTerminar() bool {
 	}
 }
 
-func (c *Client) esperaShutdown(d time.Duration) bool {
+func (c *Client) awaitShutdown(d time.Duration) bool {
 	// Chequeo entre esperas
 	select {
 	//Canal se cierra por un SIGTERM, interrumpo
@@ -93,7 +93,7 @@ func (c *Client) StartClientLoop() {
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
 		// Chequeo antes de conectarme
-		if c.debeTerminar() {
+		if c.mustStop() {
 			return
 		}
 
@@ -124,7 +124,7 @@ func (c *Client) StartClientLoop() {
 		)
 
 		// Chequeo entre espera
-		if c.esperaShutdown(c.config.LoopPeriod) {
+		if c.awaitShutdown(c.config.LoopPeriod) {
 			return
 		}
 
