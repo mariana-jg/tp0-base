@@ -1,12 +1,12 @@
 import sys
 
-# Constantes con el contenido del archivo .yaml original
+# Constants with the contents of the original .yaml file
 HEADER = """
 name: tp0
 services:
 """
 
-BLOQUE_SERVIDOR = """
+SERVER_BLOCK = """
   server:
     container_name: server
     image: server:latest
@@ -19,7 +19,7 @@ BLOQUE_SERVIDOR = """
       - ./server/config.ini:/config.ini
 """
 
-BLOQUE_REDES = """
+NETWORK_BLOCK = """
 networks:
   testing_net:
     ipam:
@@ -28,8 +28,8 @@ networks:
         - subnet: 172.25.125.0/24
 """
 
-# Cliente parametrizable utilizando format
-def bloque_cliente(n):
+# Parameterizable client using format
+def client_block(n):
     return f"""
   client{n}:
     container_name: client{n}
@@ -46,18 +46,18 @@ def bloque_cliente(n):
 """
 
 if __name__ == "__main__":
-    argumentos = sys.argv
-    if len(argumentos) > 2:
-        salida = argumentos[1]
-        cantidad_de_clientes = int(argumentos[2])
-        # with open para asegurar el cierre del archivo
-        with open(salida, 'w') as archivo:
-            archivo.write(HEADER)
-            archivo.write(BLOQUE_SERVIDOR)
-            for n in range(1, cantidad_de_clientes + 1):
-                archivo.write(bloque_cliente(n))
-            archivo.write(BLOQUE_REDES)    
+    arguments = sys.argv
+    if len(arguments) > 2:
+        output_file = arguments[1]
+        clients = int(arguments[2])
+        # with open to ensure the file is closed
+        with open(output_file, 'w') as file:
+            file.write(HEADER)
+            file.write(SERVER_BLOCK)
+            for n in range(1, clients + 1):
+                file.write(client_block(n))
+            file.write(NETWORK_BLOCK)    
     else:
-        print("Cantidad de argumentos insuficiente")    
+        print("Insufficient number of arguments")    
 
         

@@ -178,3 +178,34 @@ Se espera que se redacte una sección del README en donde se indique cómo ejecu
 Se proveen [pruebas automáticas](https://github.com/7574-sistemas-distribuidos/tp0-tests) de caja negra. Se exige que la resolución de los ejercicios pase tales pruebas, o en su defecto que las discrepancias sean justificadas y discutidas con los docentes antes del día de la entrega. El incumplimiento de las pruebas es condición de desaprobación, pero su cumplimiento no es suficiente para la aprobación. Respetar las entradas de log planteadas en los ejercicios, pues son las que se chequean en cada uno de los tests.
 
 La corrección personal tendrá en cuenta la calidad del código entregado y casos de error posibles, se manifiesten o no durante la ejecución del trabajo práctico. Se pide a los alumnos leer atentamente y **tener en cuenta** los criterios de corrección informados  [en el campus](https://campusgrado.fi.uba.ar/mod/page/view.php?id=73393).
+
+# Solución - Estudiante: Mariana Juarez Goldemberg - 108441
+
+### Ejercicio N°1:
+Para el cumplimiento de este ejercicio se crea el script de bash pedido `generar-compose.sh` el cual recibe los parámetros que se indicaron en la consigna, utilizando un script de Python (lo consideré una mejor alternativa que hacer todo en bash) `mi-generador.py` que se ejecuta utilizando esos parámetros.
+
+Dentro del script de Python se encuentran 3 constantes definidas para la generación del docker-compose:
+* HEADER: con el nombre del compose y y el header de la declaración de los servicios a levantar.
+* SERVER_BLOCK: con las definiciones necesarias para crear un container de un servidor.
+* NETWORK_BLOCK: con las definiciones para crear las redes utilizadas dentro del proyecto.
+
+Luego, para poder crear el container de la cantidad de clientes especificada por parámetro, se creó una función `client_block(n)` que permite definir un cliente según su número identificador, devolviendo el string formado para poder escribirlo en el archivo.
+
+Para cumplir con el objetivo del ejercicio, se abre el archivo (con `with open` para asegurar su cierre), se escriben las diferentes constantes con los bloques para formar el docker-compose, repitiendo la escritura del cliente con un ID desde 1 hasta la cantidad que llegue por parámetro + 1.
+
+#### Ejecución
+
+`./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
+
+### Ejercicio N°2:
+Para el cumplimiento de este ejercicio, dentro del script de Python `mi-generador.py`, se agregó como propiedad al servicio de cliente y servidor un `volumes`. Se configuró para que cada uno de los servicios tome su archivo de configuración (`config.yaml` para el cliente y `config.ini` para el servidor) como volume, para que la información de esos archivos se persista fuera del container. Además, se eliminaron las variables de entorno que tenían precedencia sobre los archivos de configuración. 
+
+#### Ejecución
+
+`./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
+
+### Ejercicio N°3:
+Para el cumplimiento de este ejercicio, se crea el script de bash `validar-echo-server.sh` pedido, dentro del mismo se define un mensaje para enviar y se obtiene el puerto y la IP del servidor utilizando grep y extrayendo los valores. 
+
+Luego se lanza un contenedor efímero de busybox (imagen de linux minimalista) que ya trae incorporado netcat. Se conecta a la red interna `tp0_testing_net` y dentro del contenedor se ejecuta `"echo '$message' | nc $SERVER_IP $SERVER_PORT"`, con este comando se genera el mensaje y se manda a netcat, abriendo una conexión con el servidor y enviándole ese mensaje. `nc` devuelve lo que el servidor responda, guardándolo en la variable answer. Por último, se realiza la verificación de que el server devolvió el mismo mensaje.
+
