@@ -12,14 +12,20 @@ class Server:
         self._server_socket.settimeout(1)
         self._running = True
         signal.signal(signal.SIGTERM, self.shutdown)
+        self._client_sockets = []
 
     """
-    Se contempla cierre de los file descriptors antes de que el thread de la aplicacion principal muera.
+    Closing of file descriptors is contemplated before the main application thread dies
     """
 
     def shutdown(self, signum, frame):
         self._running = False
         self._server_socket.close()
+        for socket in self._client_sockets:
+            try:
+                socket.close()
+            except OSError:
+                pass    
         logging.info("action: exit | result: success")
 
     def run(self):
@@ -50,6 +56,7 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
+        self._client_sockets.append(client_sock)
         try:
             # TODO: Modify the receive to avoid short-reads
             msg = client_sock.recv(1024).rstrip().decode('utf-8')
@@ -61,6 +68,7 @@ class Server:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
+            self._client_sockets.remove(client_sock)
 
     def __accept_new_connection(self):
         """
