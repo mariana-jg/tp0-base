@@ -226,11 +226,11 @@ En la función principal del cliente, tenemos dos funciones que chequean el shut
 
 Para el cumplimiento de este ejercicio, comencé con la definición de un protocolo de comunicación entre el cliente y el servidor en el directorio `/protocol` como `bet.go` . A continuación, describo la estructura de los datos que envía el cliente (serializados en big-endian) al servidor. Definí que el tamaño del paquete sea dinámico dada la naturaleza de la información.
 
-* Lenght del payload (2B): framing - tamaño total del payload (menos estos 2 bytes).
+* Length del payload (2B): framing - tamaño total del payload (menos estos 2 bytes).
 * Identificador de agencia (1B): ID de la agencia (del cliente) que apuesta.
-* Lenght del nombre (2B): largo del nombre de la persona que apuesta. 
+* Length del nombre (2B): largo del nombre de la persona que apuesta. 
 * Nombre (Tamaño variable): nombre de la persona que apuesta.
-* Lenght del apellido (2B): largo del apellido de la persona que apuesta. 
+* Length del apellido (2B): largo del apellido de la persona que apuesta. 
 * Apellido (Tamaño variable): apellido de la persona que apuesta.
 * Documento (8B): DNI de la persona que realiza la apuesta.
 * Fecha de nacimiento (10B): fecha de nacimiento de la persona que apuesta. Con formato "YYYY-MM-DD".
