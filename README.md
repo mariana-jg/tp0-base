@@ -228,9 +228,9 @@ Para el cumplimiento de este ejercicio, comencé con la definición de un protoc
 
 * Length del payload (2B): framing - tamaño total del payload (menos estos 2 bytes).
 * Identificador de agencia (1B): ID de la agencia (del cliente) que apuesta.
-* Length del nombre (2B): largo del nombre de la persona que apuesta. 
+* Length del nombre (2B): largo del nombre de la persona que apuesta. [Máx. 65535 bytes]
 * Nombre (Tamaño variable): nombre de la persona que apuesta.
-* Length del apellido (2B): largo del apellido de la persona que apuesta. 
+* Length del apellido (2B): largo del apellido de la persona que apuesta. [Máx. 65535 bytes]
 * Apellido (Tamaño variable): apellido de la persona que apuesta.
 * Documento (8B): DNI de la persona que realiza la apuesta.
 * Fecha de nacimiento (10B): fecha de nacimiento de la persona que apuesta. Con formato "YYYY-MM-DD".
