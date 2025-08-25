@@ -2,50 +2,50 @@ import struct
 from common.utils import *
 from common.socket_utils import *
 
+AGENCY_LENGHT = 1
+FRAME_LENGHT = 2
+DOCUMENT_LENGHT = 8
+BIRTHDATE_LENGHT = 10
+NUMBER_LENGHT = 2
+LEN_NAME_LENGHT = 2
+LEN_LASTNAME_LENGHT = 2
+
 def decode_bet(socket):
-    # Obtengo los bytes que hay que leer a continuacion, el payload
-    # ! -> Big endian, H -> UINT16 - 2bytes
-    total_lenght_bytes = avoid_short_reads(socket, 2)
+
+    total_lenght_bytes = avoid_short_reads(socket, FRAME_LENGHT)
     if total_lenght_bytes is None:
         return None
+    
     (payload_len,) = struct.unpack("!H", total_lenght_bytes)
-    # Traigo el payload completo
+    
     payload = avoid_short_reads(socket, payload_len)
     if payload is None:
         return None
 
     offset = 0
 
-    #Agencia con lenght 1
     agency = payload[offset]
+    offset += AGENCY_LENGHT
 
-    offset += 1
-
-    #Nombre con lenght varaible
-
-    (name_len,) = struct.unpack("!H", payload[offset:offset + 2])
-    offset += 2
+    (name_len,) = struct.unpack("!H", payload[offset:offset + LEN_NAME_LENGHT])
+    offset += LEN_NAME_LENGHT
     name = payload[offset:offset+name_len].decode("utf-8")
     offset += name_len
 
-    #Apellido con lenght varaible
-
-    (lastname_len,) = struct.unpack("!H", payload[offset:offset + 2])
-    offset += 2
+    (lastname_len,) = struct.unpack("!H", payload[offset:offset + LEN_LASTNAME_LENGHT])
+    offset += LEN_LASTNAME_LENGHT
     lastname = payload[offset:offset+lastname_len].decode("utf-8")
     offset += lastname_len    
 
-    #documento con lenght 8b Q-> UINT64
-    (document,) = struct.unpack('!Q', payload[offset:offset+8])
-    offset += 8
+    (document,) = struct.unpack('!Q', payload[offset:offset+DOCUMENT_LENGHT])
+    offset += DOCUMENT_LENGHT
 
-    birth_bytes = payload[offset:offset+10]
-    offset += 10
-    birthdate = birth_bytes.decode('ascii')
+    birthdate_bytes = payload[offset:offset+BIRTHDATE_LENGHT]
+    offset += BIRTHDATE_LENGHT
+    birthdate = birthdate_bytes.decode('ascii')
     
-    # numero con 2b
-    (number,) = struct.unpack('!H', payload[offset:offset+2])
-    offset += 2
+    (number,) = struct.unpack('!H', payload[offset:offset+NUMBER_LENGHT])
+    offset += NUMBER_LENGHT
 
     return Bet(agency, name, lastname, document, birthdate, number)
 
