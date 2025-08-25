@@ -37,17 +37,13 @@ def client_block(n):
     entrypoint: /client
     environment:
       - CLI_ID={n}
-      - NOMBRE=Santiago Lionel
-      - APELLIDO=LORCA
-      - DOCUMENTO=30904465
-      - NACIMIENTO=1999-03-17
-      - NUMERO=7574
     networks:
       - testing_net
     depends_on:
       - server
     volumes:
       - ./client/config.yaml:/config.yaml
+      - ./.data/agency-{n}.csv:/app/agency.csv
 """
 
 if __name__ == "__main__":
