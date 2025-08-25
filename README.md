@@ -221,3 +221,44 @@ Además, se configura `accept()` con `settimeout(1)` para que el servidor despie
 Dentro del struct del cliente se define un canal de señales interno `done` que se utiliza para notificar el apagado del cliente. En la inicialización, se define un canal de señales del SO `signalChan`, que se le notificará cuando se envíe un SIGTERM, allí se define una go routine que corre en paralelo al bucle principal y espera un `SIGTERM` en `signalChan`. Cuando la señal llega, cierra el canal `done`, despertando al loop para que termine de forma ordenada.
 
 En la función principal del cliente, tenemos dos funciones que chequean el shutdown. La primera, `mustStop`, chequea antes de crear el socket del cliente y la segunda, `awaitShutdown`, asegura que el cliente no quede dormido si llega la señal (el select elige lo que pase primero: `done` se cierra o pasó el tiempo).
+
+### Ejercicio N°5:
+
+Para el cumplimiento de este ejercicio, comencé con la definición de un protocolo de comunicación entre el cliente y el servidor en el directorio `/protocol` como `bet.go` . A continuación, describo la estructura de los datos que envía el cliente (serializados en big-endian) al servidor. Definí que el tamaño del paquete sea dinámico dada la naturaleza de la información.
+
+* Lenght del payload (2B): framing - tamaño total del payload (menos estos 2 bytes).
+* Identificador de agencia (1B): ID de la agencia (del cliente) que apuesta.
+* Lenght del nombre (2B): largo del nombre de la persona que apuesta. 
+* Nombre (Tamaño variable): nombre de la persona que apuesta.
+* Lenght del apellido (2B): largo del apellido de la persona que apuesta. 
+* Apellido (Tamaño variable): apellido de la persona que apuesta.
+* Documento (8B): DNI de la persona que realiza la apuesta.
+* Fecha de nacimiento (10B): fecha de nacimiento de la persona que apuesta. Con formato "YYYY-MM-DD".
+* Número (2B): número apostado. 
+
+#### Servidor
+
+Se implementó el decodificador del lado del servidor una vez recibido el paquete dentro del archivo `protocol_codec.py`. Se leen los 2 bytes que identifican el largo del payload, luego exactamente se lee ese tamaño y se deserializa.
+Además, como pedía la consigna, se implementaron las funciones para evitar los short writes (para garantizar que todos los bytes se envíen) y short reads (para garantizar que se lea por completo el paquete). 
+
+##### Flujo del servidor
+* Registra el socket entrante.
+* Intenta leer y deserializar una apuesta del cliente.
+* Almacena la apuesta.
+* Envía un ACK (1B) al cliente (un "1").
+* Cierra la conexión.
+
+#### Cliente
+
+Se implementó la lógica de serialización y envío de la apuesta en el cliente. Cada cliente construye una estructura `Bet` con los datos provenientes de las variables de entorno proporcionadas, y luego utiliza el método `ToBytes()` definido en el módulo `protocol` para serializarlo.
+También se encuentran definidas las funciones para evitar los short writes y short reads.
+
+##### Flujo del cliente
+* Construye la apuesta a partir de las variables de entorno.
+* Serializa la apuesta, devuelve el paquete en formato binario `[Len(2B) + payload]`.
+* Abre un socket hacia el servidor.
+* Envía la apuesta al servidor.
+* Espera la confirmación del ACK.
+* Loguea el resultado de la operación y cierra la conexión con el servidor.
+
+
