@@ -101,7 +101,7 @@ func (c *Client) CreateBetsFromCSV(pathBets string, agencia int) ([][]*protocol.
 			continue
 		}
 		numeroApostado, _ := strconv.ParseUint(line[4], 10, 64)
-		documento, _ := strconv.ParseUint(line[4], 10, 16)
+		documento, _ := strconv.ParseUint(line[2], 10, 16)
 		bet := protocol.NewBet(
 			uint8(agencia),
 			line[0],
@@ -127,60 +127,52 @@ func (c *Client) CreateBetsFromCSV(pathBets string, agencia int) ([][]*protocol.
 }
 
 func (c *Client) MakeBet(path string) bool {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-
 	agency, _ := strconv.Atoi(c.config.ID)
 	batches, err := c.CreateBetsFromCSV(path, agency)
 	if err != nil {
 		return false
 	}
-
 	if c.mustStop() {
 		return false
 	}
 
+	allOK := true
+
 	for _, batch := range batches {
 		message := protocol.BatchToBytes(batch)
-		if err != nil {
-			log.Errorf("action: batch_serializado | result: fail | client_id: %v | error: %v", c.config.ID, err)
+
+		if err := c.createClientSocket(); err != nil {
+			log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return false
 		}
 
-		c.createClientSocket()
+		func() {
+			defer c.conn.Close()
 
-		defer c.conn.Close()
+			if err := avoidShortWrites(c.conn, message); err != nil {
+				log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+					c.config.ID, err)
+				allOK = false
+				return
+			}
 
-		err = avoidShortWrites(c.conn, message)
-		if err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			return false
-		}
-		ack, err := avoidShortReads(c.conn, 1)
-		if err != nil {
-			log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			return false
-		}
+			ack, err := avoidShortReads(c.conn, 1)
+			if err != nil {
+				log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+					c.config.ID, err)
+				allOK = false
+				return
+			}
 
-		if ack[0] == 1 && len(ack) == 1 {
-			log.Infof("action: apuesta_enviada | result: success | batch_size: %v",
-				len(batch),
-			)
-			return true
-		} else {
-			log.Infof("action: apuesta_enviada | result: fail | batch_size: %v",
-				len(batch),
-			)
-			return false
-		}
+			if len(ack) == 1 && ack[0] == 1 {
+				log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
+			} else {
+				log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
+				allOK = false
+			}
+		}()
 	}
+
 	log.Infof("action: exit | result: success")
-	c.conn.Close()
-	return true
+	return allOK
 }
