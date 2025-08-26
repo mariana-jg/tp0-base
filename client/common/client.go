@@ -1,9 +1,12 @@
 package common
 
 import (
+	"encoding/csv"
+	"io"
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -19,6 +22,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopAmount    int
 	LoopPeriod    time.Duration
+	BatchSize     int
 }
 
 // Client Entity that encapsulates how
@@ -71,51 +75,112 @@ func (c *Client) mustStop() bool {
 	}
 }
 
-func (c *Client) MakeBet(bet *protocol.Bet) bool {
+func (c *Client) CreateBetsFromCSV(pathBets string, agencia int) ([][]*protocol.Bet, error) {
+	file, err := os.Open(pathBets)
+	if err != nil {
+		log.Errorf("action: open_file | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	var allBets []*protocol.Bet
+
+	for {
+		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("action: read_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return nil, err
+		}
+
+		if len(line) != 5 {
+			log.Errorf("action: read_bet | result: fail | client_id: %v | error: Insufficient data on line", c.config.ID)
+			continue
+		}
+		numeroApostado, _ := strconv.ParseUint(line[4], 10, 64)
+		documento, _ := strconv.ParseUint(line[4], 10, 16)
+		bet := protocol.NewBet(
+			uint8(agencia),
+			line[0],
+			line[1],
+			documento,
+			line[3],
+			uint16(numeroApostado),
+		)
+
+		allBets = append(allBets, bet)
+	}
+
+	var betBatches [][]*protocol.Bet
+	for i := 0; i < len(allBets); i += c.config.BatchSize {
+		end := i + c.config.BatchSize
+		if end > len(allBets) {
+			end = len(allBets)
+		}
+		betBatches = append(betBatches, allBets[i:end])
+	}
+
+	return betBatches, nil
+}
+
+func (c *Client) MakeBet(path string) bool {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
+
+	agency, _ := strconv.Atoi(c.config.ID)
+	batches, err := c.CreateBetsFromCSV(path, agency)
+	if err != nil {
+		return false
+	}
+
 	if c.mustStop() {
 		return false
 	}
 
-	message, err := bet.ToBytes()
-	if err != nil {
-		log.Errorf("action: apuesta_serializada | result: fail | client_id: %v | error: %v", c.config.ID, err)
-		return false
-	}
+	for _, batch := range batches {
+		message := protocol.BatchToBytes(batch)
+		if err != nil {
+			log.Errorf("action: batch_serializado | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return false
+		}
 
-	c.createClientSocket()
+		c.createClientSocket()
 
-	defer c.conn.Close()
+		defer c.conn.Close()
 
-	err = avoidShortWrites(c.conn, message)
-	if err != nil {
-		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-		return false
-	}
-	ack, err := avoidShortReads(c.conn, 1)
-	if err != nil {
-		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-		return false
-	}
+		err = avoidShortWrites(c.conn, message)
+		if err != nil {
+			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			return false
+		}
+		ack, err := avoidShortReads(c.conn, 1)
+		if err != nil {
+			log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+				c.config.ID,
+				err,
+			)
+			return false
+		}
 
-	if ack[0] == 1 && len(ack) == 1 {
-		log.Infof("action: apuesta_enviada | result: success | dni: %v | numero: %v",
-			bet.Document,
-			bet.Number,
-		)
-		return true
-	} else {
-		log.Infof("action: apuesta_enviada | result: fail | dni: %v | numero: %v",
-			bet.Document,
-			bet.Number,
-		)
-		return false
+		if ack[0] == 1 && len(ack) == 1 {
+			log.Infof("action: apuesta_enviada | result: success | batch_size: %v",
+				len(batch),
+			)
+			return true
+		} else {
+			log.Infof("action: apuesta_enviada | result: fail | batch_size: %v",
+				len(batch),
+			)
+			return false
+		}
 	}
+	log.Infof("action: exit | result: success")
+	c.conn.Close()
+	return true
 }

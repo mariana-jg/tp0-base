@@ -122,13 +122,14 @@ func main() {
 		ID:            v.GetString("id"),
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
+		BatchSize:     v.GetInt("batch.maxAmount"),
 	}
 
-	bet, err := LoadBet(clientConfig.ID)
+	/*bet, err := LoadBet(clientConfig.ID)
 	if err != nil {
 		log.Criticalf("%s", err)
-	}
+	}*/
 
 	client := common.NewClient(clientConfig)
-	client.MakeBet(bet)
+	client.MakeBet("./app/agency.csv")
 }

@@ -49,5 +49,9 @@ def decode_bet(socket):
 
     return Bet(agency, name, lastname, document, birthdate, number)
 
-
+def decode_bet_batch(socket):
+    len_batch = avoid_short_reads(socket, 1)[0]
+    bets = [decode_bet(socket) for _ in range(len_batch)]
+    return bets    
+    
 

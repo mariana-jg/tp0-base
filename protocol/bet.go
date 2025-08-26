@@ -75,3 +75,14 @@ func (bp Bet) ToBytes() ([]byte, error) {
 
 	return frame.Bytes(), nil
 }
+
+func BatchToBytes(batch []*Bet) []byte {
+	data := []byte{byte(len(batch))}
+
+	for _, bet := range batch {
+		bet_bytes, _ := bet.ToBytes()
+		data = append(data, bet_bytes...)
+	}
+
+	return data
+}
