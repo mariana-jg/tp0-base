@@ -68,11 +68,11 @@ class Server:
             #logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             store_bets(bets)
             logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
-            avoid_short_writes(client_sock, struct.pack('>B', 1))
+            mustWriteAll(client_sock, struct.pack('>B', 1))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
-            avoid_short_writes(client_sock, struct.pack('>B', 1))
+            mustWriteAll(client_sock, struct.pack('>B', 1))
             client_sock.close()
             self._client_sockets.remove(client_sock)
 
