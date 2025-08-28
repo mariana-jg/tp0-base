@@ -88,7 +88,7 @@ func (c *Client) MakeBet(bet *protocol.Bet) bool {
 
 	defer c.conn.Close()
 
-	err = avoidShortWrites(c.conn, message)
+	err = mustWriteAll(c.conn, message)
 	if err != nil {
 		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
 			c.config.ID,
@@ -96,7 +96,7 @@ func (c *Client) MakeBet(bet *protocol.Bet) bool {
 		)
 		return false
 	}
-	ack, err := avoidShortReads(c.conn, 1)
+	ack, err := mustReadAll(c.conn, 1)
 	if err != nil {
 		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
 			c.config.ID,

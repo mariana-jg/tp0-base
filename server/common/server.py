@@ -64,7 +64,7 @@ class Server:
             logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
             store_bets([bet])
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-            avoid_short_writes(client_sock, struct.pack('>B', 1))
+            mustWriteAll(client_sock, struct.pack('>B', 1))
         except OSError as e:
             logging.error("action: receive_message | result: fail | error: {e}")
         finally:
