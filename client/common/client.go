@@ -13,6 +13,8 @@ import (
 
 var log = logging.MustGetLogger("log")
 
+const MAX_TRIES = 5
+
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
 	ID            string
@@ -47,18 +49,28 @@ func NewClient(config ClientConfig) *Client {
 }
 
 // CreateClientSocket Initializes client socket. In case of
-// failure, error is printed in stdout/stderr and exit 1
-// is returned
+// failure, it retries certain times before returning error.
 func (c *Client) createClientSocket() error {
-	conn, err := net.Dial("tcp", c.config.ServerAddress)
-	if err != nil {
-		log.Criticalf(
-			"action: connect | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
+	var err error
+	for i := 1; i <= MAX_TRIES; i++ {
+		conn, err := net.Dial("tcp", c.config.ServerAddress)
+		if err == nil {
+			c.conn = conn
+			log.Infof(
+				"action: connect | result: success | attempt: %d/%d | client_id: %v",
+				i,
+				MAX_TRIES,
+				c.config.ID,
+			)
+			return err
+		}
+		time.Sleep(time.Duration(i*500) * time.Millisecond)
 	}
-	c.conn = conn
+	log.Criticalf(
+		"action: connect | result: fail | client_id: %v | error: %v",
+		c.config.ID,
+		err,
+	)
 	return nil
 }
 
