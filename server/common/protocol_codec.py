@@ -12,13 +12,13 @@ LEN_LASTNAME_LENGHT = 2
 
 def decode_bet(socket):
 
-    total_lenght_bytes = avoid_short_reads(socket, FRAME_LENGHT)
+    total_lenght_bytes = mustReadAll(socket, FRAME_LENGHT)
     if total_lenght_bytes is None:
         return None
     
     (payload_len,) = struct.unpack("!H", total_lenght_bytes)
     
-    payload = avoid_short_reads(socket, payload_len)
+    payload = mustReadAll(socket, payload_len)
     if payload is None:
         return None
 
@@ -50,7 +50,7 @@ def decode_bet(socket):
     return Bet(agency, name, lastname, document, birthdate, number)
 
 def decode_bet_batch(socket):
-    len_batch = avoid_short_reads(socket, 1)[0]
+    len_batch = mustReadAll(socket, 1)[0]
     bets = [decode_bet(socket) for _ in range(len_batch)]
     return bets    
     

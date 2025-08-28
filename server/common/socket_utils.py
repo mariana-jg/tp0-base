@@ -1,7 +1,7 @@
 """
 Made to avoid short writes.
 """
-def avoid_short_writes(socket, data):
+def mustWriteAll(socket, data):
     total = len(data)
     sent = 0
     while sent < total:
@@ -11,7 +11,7 @@ def avoid_short_writes(socket, data):
 """
 Made to avoid short reads.
 """
-def avoid_short_reads(socket, expected_length):
+def mustReadAll(socket, expected_length):
     data = bytearray()
     while len(data) < expected_length:
         packet = socket.recv(expected_length-len(data))
