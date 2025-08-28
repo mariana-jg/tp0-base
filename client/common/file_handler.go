@@ -26,6 +26,7 @@ func (c *Client) ReadBetsFromFile(pathBets string, agencia int) ([]*protocol.Bet
 		if err == io.EOF {
 			break
 		}
+
 		if err != nil {
 			log.Errorf("action: read_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return nil, err
@@ -59,15 +60,15 @@ func (c *Client) ReadBetsFromFile(pathBets string, agencia int) ([]*protocol.Bet
 }
 
 func (c *Client) CreateBatch(bets []*protocol.Bet) [][]*protocol.Bet {
-	var betBatches [][]*protocol.Bet
+	var batches [][]*protocol.Bet
 
 	for i := 0; i < len(bets); i += c.config.BatchSize {
 		end := i + c.config.BatchSize
 		if end > len(bets) {
 			end = len(bets)
 		}
-		betBatches = append(betBatches, bets[i:end])
+		batches = append(batches, bets[i:end])
 	}
 
-	return betBatches
+	return batches
 }
