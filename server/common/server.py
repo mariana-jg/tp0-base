@@ -59,13 +59,10 @@ class Server:
         """
         self._client_sockets.append(client_sock)
         try:
-            #bet = decode_bet(client_sock)
             bets = decode_bet_batch(client_sock)
             len_bets = len(bets)
             addr = client_sock.getpeername()
             logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
-            #store_bets([bet])
-            #logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             store_bets(bets)
             logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
             mustWriteAll(client_sock, struct.pack('>B', 1))
