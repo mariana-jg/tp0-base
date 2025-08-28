@@ -12,13 +12,13 @@ LEN_LASTNAME_LENGHT = 2
 
 def decode_bet(socket):
 
-    total_lenght_bytes = avoid_short_reads(socket, FRAME_LENGHT)
+    total_lenght_bytes = mustReadAll(socket, FRAME_LENGHT)
     if total_lenght_bytes is None:
         return None
     
     (payload_len,) = struct.unpack("!H", total_lenght_bytes)
     
-    payload = avoid_short_reads(socket, payload_len)
+    payload = mustReadAll(socket, payload_len)
     if payload is None:
         return None
 
