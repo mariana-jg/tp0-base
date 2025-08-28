@@ -1,8 +1,6 @@
 package common
 
 import (
-	"encoding/csv"
-	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -29,8 +27,7 @@ type ClientConfig struct {
 type Client struct {
 	config ClientConfig
 	conn   net.Conn
-	// flag para salir del loop principal
-	done chan struct{}
+	done   chan struct{}
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -75,104 +72,55 @@ func (c *Client) mustStop() bool {
 	}
 }
 
-func (c *Client) CreateBetsFromCSV(pathBets string, agencia int) ([][]*protocol.Bet, error) {
-	file, err := os.Open(pathBets)
+func (c *Client) sendBatch(batch []*protocol.Bet) bool {
+	message := protocol.BatchToBytes(batch)
+
+	if err := c.createClientSocket(); err != nil {
+		log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return false
+	}
+
+	defer c.conn.Close()
+
+	if err := avoidShortWrites(c.conn, message); err != nil {
+		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+			c.config.ID, err)
+		return false
+	}
+
+	ack, err := avoidShortReads(c.conn, 1)
 	if err != nil {
-		log.Errorf("action: open_file | result: fail | client_id: %v | error: %v", c.config.ID, err)
-		return nil, err
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	var allBets []*protocol.Bet
-
-	for {
-		line, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Errorf("action: read_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
-			return nil, err
-		}
-
-		if len(line) != 5 {
-			log.Errorf("action: read_bet | result: fail | client_id: %v | error: Insufficient data on line", c.config.ID)
-			continue
-		}
-		numeroApostado, _ := strconv.ParseUint(line[4], 10, 64)
-		documento, _ := strconv.ParseUint(line[2], 10, 16)
-		bet := protocol.NewBet(
-			uint8(agencia),
-			line[0],
-			line[1],
-			documento,
-			line[3],
-			uint16(numeroApostado),
-		)
-
-		allBets = append(allBets, bet)
+		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+			c.config.ID, err)
+		return false
 	}
 
-	var betBatches [][]*protocol.Bet
-	for i := 0; i < len(allBets); i += c.config.BatchSize {
-		end := i + c.config.BatchSize
-		if end > len(allBets) {
-			end = len(allBets)
-		}
-		betBatches = append(betBatches, allBets[i:end])
-	}
-
-	return betBatches, nil
+	return len(ack) == 1 && ack[0] == 1
 }
 
 func (c *Client) MakeBet(path string) bool {
 	agency, _ := strconv.Atoi(c.config.ID)
-	batches, err := c.CreateBetsFromCSV(path, agency)
+	bets, err := c.ReadBetsFromFile(path, agency)
 	if err != nil {
 		return false
 	}
+	batches := c.CreateBatch(bets)
+
 	if c.mustStop() {
 		return false
 	}
 
-	allOK := true
+	allSucceeded := true
 
 	for _, batch := range batches {
-		message := protocol.BatchToBytes(batch)
-
-		if err := c.createClientSocket(); err != nil {
-			log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
-			return false
+		if c.sendBatch(batch) {
+			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
+		} else {
+			log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
+			allSucceeded = false
 		}
-
-		func() {
-			defer c.conn.Close()
-
-			if err := avoidShortWrites(c.conn, message); err != nil {
-				log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
-					c.config.ID, err)
-				allOK = false
-				return
-			}
-
-			ack, err := avoidShortReads(c.conn, 1)
-			if err != nil {
-				log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
-					c.config.ID, err)
-				allOK = false
-				return
-			}
-
-			if len(ack) == 1 && ack[0] == 1 {
-				log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
-			} else {
-				log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
-				allOK = false
-			}
-		}()
 	}
 
 	log.Infof("action: exit | result: success")
-	return allOK
+	return allSucceeded
 }
