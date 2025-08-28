@@ -14,6 +14,8 @@ import (
 
 var log = logging.MustGetLogger("log")
 
+const MAX_TRIES = 5
+
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
 	ID            string
@@ -52,7 +54,7 @@ func NewClient(config ClientConfig) *Client {
 // is returned
 func (c *Client) createClientSocket() error {
 	var err error
-	MAX_TRIES := 5
+
 	for i := 1; i <= MAX_TRIES; i++ {
 		conn, err := net.Dial("tcp", c.config.ServerAddress)
 		if err == nil {
