@@ -263,3 +263,14 @@ También se encuentran definidas las funciones para evitar los short writes y sh
 
 #### Intento de reconexión en el cliente
 Se agregó dentro del cliente luego de consultar en clase el reintento de conexión. Intenta conectarse hasta una cantidad `MAX_TRIES` definida como una constante. Decidí hacerlo de esta manera y no setear el reintento desde el Docker Compose para que el cliente pueda reconectarse ante cortes transitorios sin matar el proceso.
+
+### Ejercicio N°6:
+
+Para el cumplimiento de este ejercicio, realicé los siguientes agregados a la implementación:
+* Lectura de las apuestas en archivo .CSV.
+* Armado de los batches y serialización para que envíe el cliente.
+* Deserialización de los batches en el servidor
+
+Para estos últimos dos puntos, se reutilizaron las funciones anteriores para las apuestas individuales.
+
+Además, un detalle a destacar, es el cambio en la implementación del protocolo ya que ahora lo que se envía no es solamente una apuesta individual, sino el batch como tira de bytes.
