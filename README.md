@@ -261,4 +261,7 @@ También se encuentran definidas las funciones para evitar los short writes y sh
 * Espera la confirmación del ACK.
 * Loguea el resultado de la operación y cierra la conexión con el servidor.
 
+#### Intento de reconexión en el cliente
+Se agregó dentro del cliente luego de consultar en clase el reintento de conexión. Intenta conectarse hasta una cantidad `MAX_TRIES` definida como una constante. Decidí hacerlo de esta manera y no setear el reintento desde el Docker Compose para que el cliente pueda reconectarse ante cortes transitorios sin matar el proceso.
+
 
