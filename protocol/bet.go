@@ -14,6 +14,10 @@ type Bet struct {
 	Number    uint16
 }
 
+const (
+	TYPE_BET_BATCH = 1
+)
+
 func NewBet(agency uint8, name string, lastname string, document uint64, birthdate string, number uint16) *Bet {
 	return &Bet{
 		Agency:    agency,
@@ -77,7 +81,8 @@ func (bp Bet) ToBytes() ([]byte, error) {
 }
 
 func BatchToBytes(batch []*Bet) []byte {
-	data := []byte{byte(len(batch))}
+	//[0]: 0x01 TYPE_BET_BATCH
+	data := []byte{TYPE_BET_BATCH, byte(len(batch))}
 
 	for _, bet := range batch {
 		bet_bytes, _ := bet.ToBytes()
