@@ -5,14 +5,15 @@ HEADER = """
 name: tp0
 services:
 """
-
-SERVER_BLOCK = """
+def server_block(clients):
+  return f"""
   server:
     container_name: server
     image: server:latest
     entrypoint: python3 /main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - EXPECTEDCLIENTS={clients}
     networks:
       - testing_net
     volumes: 
@@ -54,7 +55,7 @@ if __name__ == "__main__":
         # with open to ensure the file is closed
         with open(output_file, 'w') as file:
             file.write(HEADER)
-            file.write(SERVER_BLOCK)
+            file.write(server_block(clients))
             for n in range(1, clients + 1):
                 file.write(client_block(n))
             file.write(NETWORK_BLOCK)    
