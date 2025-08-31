@@ -125,11 +125,6 @@ func main() {
 		BatchSize:     v.GetInt("batch.maxAmount"),
 	}
 
-	/*bet, err := LoadBet(clientConfig.ID)
-	if err != nil {
-		log.Criticalf("%s", err)
-	}*/
-
 	client := common.NewClient(clientConfig)
 	client.MakeBet("./app/agency.csv")
 }

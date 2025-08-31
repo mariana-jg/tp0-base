@@ -89,8 +89,6 @@ func (c *Client) mustStop() bool {
 func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 	message := protocol.BatchToBytes(batch)
 
-	//defer c.conn.Close()
-
 	if err := mustWriteAll(c.conn, message); err != nil {
 		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
 			c.config.ID, err)
@@ -110,17 +108,15 @@ func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 	message := protocol.DoneToBytes(uint8(agency))
 
-	//defer c.conn.Close()
-
 	if err := mustWriteAll(c.conn, message); err != nil {
-		log.Errorf("action: no pude escrbir | result: fail | client_id: %v | error: %v",
+		log.Errorf("action: done_enviado | result: fail | client_id: %v | error: %v",
 			c.config.ID, err)
 		return nil, false
 	}
 
 	ack, err := mustReadAll(c.conn, 1)
 	if err == nil && len(ack) == 1 && ack[0] == 1 {
-		log.Infof("action: recibi ack del done | result: success | agency: %v", agency)
+		log.Infof("action: ack_from_server | result: success | agency: %v", agency)
 	}
 
 	time.Sleep(1 * time.Second)
@@ -132,7 +128,6 @@ func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 	}
 	count := binary.BigEndian.Uint16(countB)
 
-	// 2) COUNT DNIs (uint64)
 	winners := make([]uint64, 0, count)
 	for i := 0; i < int(count); i++ {
 		dniB, err := mustReadAll(c.conn, 8)
@@ -145,28 +140,6 @@ func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 
 	return winners, true
 }
-
-/*func (c *Client) sendRequestWinners(agency int) bool {
-	//message := protocol.RequestWinnersToBytes(uint8(agency))
-	log.Info("hola estoy mandando la request para los ganadores")
-	//defer c.conn.Close()
-	data := []byte{3, byte(agency)}
-	log.Infof("packet: type=%d agency=%d", data[0], data[1])
-	if err := mustWriteAll(c.conn, data); err != nil {
-		log.Errorf("action: escribi que quiero saber los ganadores | result: fail | client_id: %v | error: %v",
-			c.config.ID, err)
-		return false
-	}
-
-	ack, err := mustReadAll(c.conn, 1)
-	if err != nil {
-		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
-			c.config.ID, err)
-		return false
-	}
-
-	return len(ack) == 1 && ack[0] == 1
-}*/
 
 func (c *Client) MakeBet(path string) bool {
 	agency, _ := strconv.Atoi(c.config.ID)
@@ -187,8 +160,6 @@ func (c *Client) MakeBet(path string) bool {
 		return false
 	}
 
-	//defer c.conn.Close()
-
 	for _, batch := range batches {
 		if c.sendBatch(batch) {
 			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
@@ -204,13 +175,6 @@ func (c *Client) MakeBet(path string) bool {
 	} else {
 		log.Infof("action: consulta_ganadores | result: fail | cant_ganadores: 0")
 	}
-	/*if c.sendRequestWinners(agency) {
-			log.Infof("action: quiero saber los ganadores | result: success | agency: %v", agency)
-		} else {
-			log.Infof("action: quiero saber los ganadores | result: fail | agency: %v", agency)
-			allSucceeded = false
-	}*/
 
-	//log.Infof("action: exit | result: success")
 	return allSucceeded
 }

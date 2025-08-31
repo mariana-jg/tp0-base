@@ -106,10 +106,3 @@ func DoneToBytes(agency uint8) []byte {
 	data := []byte{TYPE_DONE, byte(agency)}
 	return data
 }
-
-func RequestWinnersToBytes(agency uint8) []byte {
-	//[0]: 0x03 TYPE_REQUEST_WINNER
-	data := []byte{TYPE_REQUEST_WINNER, byte(agency)}
-
-	return data
-}
