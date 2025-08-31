@@ -51,8 +51,10 @@ def decode_bet(socket):
     return Bet(agency, name, lastname, document, birthdate, number)
 
 def decode_bet_batch(socket):
-    len_batch = mustReadAll(socket, 1)[0]
+    len_batch_byte = mustReadAll(socket, 1)
+    len_batch = len_batch_byte[0]
+    if len_batch == 0:
+        return []
     bets = [decode_bet(socket) for _ in range(len_batch)]
     return bets    
-    
 
