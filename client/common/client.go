@@ -119,7 +119,7 @@ func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 		log.Infof("action: ack_from_server | result: success | agency: %v", agency)
 	}
 
-	time.Sleep(1 * time.Second)
+	//time.Sleep(1 * time.Second)
 
 	countB, err := mustReadAll(c.conn, 2)
 	if err != nil {
