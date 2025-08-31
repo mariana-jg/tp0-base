@@ -28,7 +28,7 @@ def initialize_config():
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
         expected_clients_str = os.getenv(
             "EXPECTED_CLIENTS",
-            config["DEFAULT"].get("EXPECTED_CLIENTS", "5")  # default como string
+            config["DEFAULT"].get("EXPECTED_CLIENTS", "5")
         )
         config_params["expected_clients"] = int(expected_clients_str)
     except KeyError as e:
