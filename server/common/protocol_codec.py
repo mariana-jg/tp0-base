@@ -55,8 +55,13 @@ def decode_bet_batch(socket):
     bets = [decode_bet(socket) for _ in range(len_batch)]
     return bets    
 
-def packet_type(socket):
-    return mustReadAll(socket, 1)
+def packet_type(sock):
+    b = mustReadAll(sock, 1)
+    if not b or len(b) != 1:
+        return None
+    return struct.unpack("!B", b)[0] 
+
+
 
 
     

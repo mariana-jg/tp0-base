@@ -17,6 +17,8 @@ class Server:
         signal.signal(signal.SIGTERM, self.shutdown)
         self._client_sockets = []
         self._done_clients = 0
+        self._expected_clients = 3
+        self._waiting_winners = {}
 
     """
     Closing of file descriptors is contemplated before the main application thread dies
@@ -63,7 +65,7 @@ class Server:
             try:
                 type = packet_type(client_sock)
                 logging.info(f'tipo de paquete {type}')
-                if type == b'\x01':
+                if type == 1:
                     bets = decode_bet_batch(client_sock)
                     len_bets = len(bets)
                     addr = client_sock.getpeername()
@@ -71,20 +73,42 @@ class Server:
                     store_bets(bets)
                     logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
                     mustWriteAll(client_sock, struct.pack('>B', 1))    
-                elif type == b'\x02':
-                    logging.info(f'action: termino el cliente')
+                elif type == 2:
+                    logging.info(f'action: termino de enviar apuestas el cliente')
                     self._done_clients += 1
+                    agency_bytes = mustReadAll(client_sock, 1)
+                    agency = struct.unpack("!B", agency_bytes)[0]
+                    logging.info(f'action: el cliente {agency} quiere saber el resultado')
+                    self._waiting_winners[agency] = client_sock
+                    logging.info(f'{self._waiting_winners}')
                     mustWriteAll(client_sock, struct.pack('>B', 1))
-                    break       
+                    break
+                else:
+                    break
             except OSError as e:
                 logging.error("action: receive_message | result: fail | error: {e}")
     
-        if self._done_clients == 2:
-            #cargar apuestas y cargar quien es ganador por cada una de las agencias
-            logging.info(f'SE TERMINO TODO')
-        client_sock.close()
-        logging.error("CERRE LA CONEXION")
-        self._client_sockets.remove(client_sock)        
+        if self._done_clients == self._expected_clients:
+            # correr sorteo
+            winners = {i: [] for i in range(1, self._expected_clients+1)}
+            for bet in load_bets():
+                if has_won(bet):
+                    winners[int(bet.agency)].append(int(bet.document))
+
+            # responder a quienes esperan
+            for agency, sock in list(self._waiting_winners.items()):
+                dnis = winners.get(int(agency), [])
+                mustWriteAll(sock, struct.pack('!H', len(dnis)))  # COUNT
+
+                for dni in dnis:
+                    mustWriteAll(sock, struct.pack('!Q', int(dni)))  # DNI uint64
+                try:
+                    sock.close()
+                except:
+                    pass
+                self._waiting_winners.pop(agency, None)
+
+            logging.info('SE TERMINO TODO') 
         
 
     def __accept_new_connection(self):
