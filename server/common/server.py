@@ -4,7 +4,7 @@ import signal
 from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
-from multiprocessing import Process, Maneger, Barrier
+from multiprocessing import Process, Manager, Barrier
 
 class Server:
     def __init__(self, port, listen_backlog, expected_clients):
