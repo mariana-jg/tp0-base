@@ -5,6 +5,8 @@ from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
 
+TYPE_BET = 1
+TYPE_DONE = 2
 
 class Server:
     def __init__(self, port, listen_backlog, expected_clients):
@@ -64,15 +66,9 @@ class Server:
         while True:
             try:
                 type = packet_type(client_sock)
-                if type == 1:
-                    bets = decode_bet_batch(client_sock)
-                    len_bets = len(bets)
-                    addr = client_sock.getpeername()
-                    logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
-                    store_bets(bets)
-                    logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
-                    mustWriteAll(client_sock, struct.pack('>B', 1))    
-                elif type == 2:
+                if type == TYPE_BET:
+                    self.__process_bet(client_sock)
+                elif type == TYPE_DONE:
                     self._done_clients += 1
                     agency_bytes = mustReadAll(client_sock, 1)
                     agency = struct.unpack("!B", agency_bytes)[0]
@@ -106,6 +102,15 @@ class Server:
                     pass
                 self._waiting_winners.pop(agency, None)        
 
+    def __process_bet(client_sock):
+        bets = decode_bet_batch(client_sock)
+        len_bets = len(bets)
+        addr = client_sock.getpeername()
+        logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
+        store_bets(bets)
+        logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
+        mustWriteAll(client_sock, struct.pack('>B', 1))  
+    
     def __accept_new_connection(self):
         """
         Accept new connections
