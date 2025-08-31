@@ -4,7 +4,7 @@ import signal
 from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
-
+from multiprocessing import Process, Maneger, Barrier
 
 class Server:
     def __init__(self, port, listen_backlog, expected_clients):
@@ -19,6 +19,12 @@ class Server:
         self._done_clients = 0
         self._expected_clients = expected_clients
         self._waiting_winners = {}
+
+        self.manager = Maneger()
+        self._waiting_clients = self.manager.dict()
+
+        self._barrier = Barrier(expected_clients)
+
 
     """
     Closing of file descriptors is contemplated before the main application thread dies
@@ -46,13 +52,15 @@ class Server:
         while self._running:
             try:
                 client_sock = self.__accept_new_connection()
-                if client_sock: 
-                    self.__handle_client_connection(client_sock)
+                if client_sock:
+                    p = Process(target=self.__handle_client_connection, args=(client_sock,))
+                    p.daemon = True
+                    p.start()
             except socket.timeout:
                 continue
-            except OSError as error:
-                break                
-
+            except OSError:
+                break
+                
     def __handle_client_connection(self, client_sock):
         """
         Read message from a specific client socket and closes the socket
@@ -61,50 +69,63 @@ class Server:
         client socket will also be closed
         """
         self._client_sockets.append(client_sock)
-        while True:
-            try:
-                type = packet_type(client_sock)
-                if type == 1:
-                    bets = decode_bet_batch(client_sock)
-                    len_bets = len(bets)
-                    addr = client_sock.getpeername()
-                    logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
-                    store_bets(bets)
-                    logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
-                    mustWriteAll(client_sock, struct.pack('>B', 1))    
-                elif type == 2:
-                    self._done_clients += 1
-                    agency_bytes = mustReadAll(client_sock, 1)
-                    agency = struct.unpack("!B", agency_bytes)[0]
-                    logging.info(f"action: done | result: success | agency: {agency}")
-                    self._waiting_winners[agency] = client_sock
-                    mustWriteAll(client_sock, struct.pack('>B', 1))
-                    break
-                else:
-                    break
-            except OSError as e:
-                logging.error("action: receive_message | result: fail | error: {e}")
+        agency = None
 
-        if self._done_clients == self._expected_clients:
-            logging.info("action: sorteo | result: success")
-            
-            winners = {i: [] for i in range(1, self._expected_clients+1)}
-            
-            for bet in load_bets():
-                if has_won(bet):
-                    winners[int(bet.agency)].append(int(bet.document))
-
-            for agency, sock in list(self._waiting_winners.items()):
-                documents = winners.get(int(agency), [])
-                mustWriteAll(sock, struct.pack('!H', len(documents)))  
-
-                for doc in documents:
-                    mustWriteAll(sock, struct.pack('!Q', int(doc)))  
+        try:
+            while True:
                 try:
-                    sock.close()
-                except:
-                    pass
-                self._waiting_winners.pop(agency, None)        
+                    t = packet_type(client_sock)
+                    if t == 1:
+                        bets = decode_bet_batch(client_sock)
+                        addr = client_sock.getpeername()
+                        logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
+                        store_bets(bets)
+                        logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                        mustWriteAll(client_sock, struct.pack('>B', 1))
+
+                    elif t == 2:
+                        # cliente terminó; recibo agencia
+                        agency_bytes = mustReadAll(client_sock, 1)
+                        agency = struct.unpack("!B", agency_bytes)[0]
+                        logging.info(f"action: done | result: success | agency: {agency}")
+                        mustWriteAll(client_sock, struct.pack('>B', 1))
+                        break
+                    else:
+                        break
+                except OSError as e:
+                    logging.error(f"action: receive_message | result: fail | error: {e}")
+                    return
+            
+            idx = self._barrier.wait()  
+
+            if idx == 0:
+                logging.info("action: sorteo | result: in_progress")
+                winners_local = {i: [] for i in range(1, self._expected_clients + 1)}
+                for bet in load_bets():
+                    if has_won(bet):
+                        winners_local[int(bet.agency)].append(int(bet.document))
+
+                
+                for ag, docs in winners_local.items():
+                    self._winners_shared[ag] = docs
+                logging.info("action: sorteo | result: success")
+
+            self._barrier.wait()
+
+            if agency is not None:
+                docs = list(self._winners_shared.get(int(agency), []))
+                mustWriteAll(client_sock, struct.pack('!H', len(docs)))
+                for doc in docs:
+                    mustWriteAll(client_sock, struct.pack('!Q', int(doc)))
+        finally:
+            try:
+                client_sock.close()
+            except:
+                pass
+            try:
+                self._client_sockets.remove(client_sock)
+            except:
+                pass     
 
     def __accept_new_connection(self):
         """
