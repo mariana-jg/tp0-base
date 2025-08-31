@@ -21,7 +21,7 @@ class Server:
         self._waiting_winners = {}
 
         self.manager = Manager()
-        self._waiting_clients = self.manager.dict()
+        self._winners_shared = self.manager.dict()
 
         self._barrier = Barrier(expected_clients)
 
