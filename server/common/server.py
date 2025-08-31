@@ -102,7 +102,7 @@ class Server:
                     pass
                 self._waiting_winners.pop(agency, None)        
 
-    def __process_bet(client_sock):
+    def __process_bet(self, client_sock):
         bets = decode_bet_batch(client_sock)
         len_bets = len(bets)
         addr = client_sock.getpeername()
