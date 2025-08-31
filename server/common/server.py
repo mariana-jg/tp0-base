@@ -85,24 +85,21 @@ class Server:
             except OSError as e:
                 logging.error("action: receive_message | result: fail | error: {e}")
 
-
-
         if self._done_clients == self._expected_clients:
             logging.info("action: sorteo | result: success")
-            # correr sorteo
+            
             winners = {i: [] for i in range(1, self._expected_clients+1)}
+            
             for bet in load_bets():
                 if has_won(bet):
                     winners[int(bet.agency)].append(int(bet.document))
-            logging.info("action: sorteo | result: success")
 
-            # responder a quienes esperan
             for agency, sock in list(self._waiting_winners.items()):
-                dnis = winners.get(int(agency), [])
-                mustWriteAll(sock, struct.pack('!H', len(dnis)))  # COUNT
+                documents = winners.get(int(agency), [])
+                mustWriteAll(sock, struct.pack('!H', len(documents)))  
 
-                for dni in dnis:
-                    mustWriteAll(sock, struct.pack('!Q', int(dni)))  # DNI uint64
+                for doc in documents:
+                    mustWriteAll(sock, struct.pack('!Q', int(doc)))  
                 try:
                     sock.close()
                 except:
