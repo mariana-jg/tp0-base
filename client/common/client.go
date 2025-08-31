@@ -176,7 +176,6 @@ func (c *Client) MakeBet(path string) bool {
 		}
 	}
 
-	// enviar último batch si quedó algo
 	if len(batch) > 0 {
 		if c.sendBatch(batch) {
 			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
@@ -186,7 +185,6 @@ func (c *Client) MakeBet(path string) bool {
 		}
 	}
 
-	// mandar batch vacío para marcar fin
 	var vacio []*protocol.Bet
 	if c.sendBatch(vacio) {
 		log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(vacio))
