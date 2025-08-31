@@ -84,8 +84,11 @@ class Server:
                     break
             except OSError as e:
                 logging.error("action: receive_message | result: fail | error: {e}")
-    
+
+
+
         if self._done_clients == self._expected_clients:
+            logging.info("action: sorteo | result: success")
             # correr sorteo
             winners = {i: [] for i in range(1, self._expected_clients+1)}
             for bet in load_bets():
