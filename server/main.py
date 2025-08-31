@@ -26,7 +26,11 @@ def initialize_config():
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
         config_params["listen_backlog"] = int(os.getenv('SERVER_LISTEN_BACKLOG', config["DEFAULT"]["SERVER_LISTEN_BACKLOG"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
-        config_params["expected_clients"] = int(os.getenv('EXPECTEDCLIENTS'))
+        expected_clients_str = os.getenv(
+            "EXPECTED_CLIENTS",
+            config["DEFAULT"].get("EXPECTED_CLIENTS", "5")  # default como string
+        )
+        config_params["expected_clients"] = int(expected_clients_str)
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:

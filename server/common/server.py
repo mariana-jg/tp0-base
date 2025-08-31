@@ -64,7 +64,6 @@ class Server:
         while True:
             try:
                 type = packet_type(client_sock)
-                logging.info(f'tipo de paquete {type}')
                 if type == 1:
                     bets = decode_bet_batch(client_sock)
                     len_bets = len(bets)
@@ -74,13 +73,11 @@ class Server:
                     logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
                     mustWriteAll(client_sock, struct.pack('>B', 1))    
                 elif type == 2:
-                    logging.info(f'action: termino de enviar apuestas el cliente')
                     self._done_clients += 1
                     agency_bytes = mustReadAll(client_sock, 1)
                     agency = struct.unpack("!B", agency_bytes)[0]
-                    logging.info(f'action: el cliente {agency} quiere saber el resultado')
+                    logging.info(f"action: done | result: success | agency: {agency}")
                     self._waiting_winners[agency] = client_sock
-                    logging.info(f'{self._waiting_winners}')
                     mustWriteAll(client_sock, struct.pack('>B', 1))
                     break
                 else:
@@ -94,6 +91,7 @@ class Server:
             for bet in load_bets():
                 if has_won(bet):
                     winners[int(bet.agency)].append(int(bet.document))
+            logging.info("action: sorteo | result: success")
 
             # responder a quienes esperan
             for agency, sock in list(self._waiting_winners.items()):
@@ -106,10 +104,7 @@ class Server:
                     sock.close()
                 except:
                     pass
-                self._waiting_winners.pop(agency, None)
-
-            logging.info('SE TERMINO TODO') 
-        
+                self._waiting_winners.pop(agency, None)        
 
     def __accept_new_connection(self):
         """

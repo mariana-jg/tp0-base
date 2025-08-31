@@ -13,7 +13,7 @@ def server_block(clients):
     entrypoint: python3 /main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - EXPECTEDCLIENTS={clients}
+      - EXPECTED_CLIENTS={clients}
     networks:
       - testing_net
     volumes: 
