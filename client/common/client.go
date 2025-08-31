@@ -45,7 +45,7 @@ func NewClient(config ClientConfig) *Client {
 	go func() {
 		<-signalChan
 		close(client.done)
-		log.Info("action: exit | result: success")
+		//log.Info("action: exit | result: success")
 	}()
 	return client
 }
@@ -209,6 +209,6 @@ func (c *Client) MakeBet(path string) bool {
 			allSucceeded = false
 	}*/
 
-	log.Infof("action: exit | result: success")
+	//log.Infof("action: exit | result: success")
 	return allSucceeded
 }
