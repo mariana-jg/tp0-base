@@ -5,10 +5,10 @@ from common.socket_utils import *
 AGENCY_LENGHT = 1
 FRAME_LENGHT = 2
 DOCUMENT_LENGHT = 8
-BIRTHDATE_LENGHT = 10
 NUMBER_LENGHT = 2
 LEN_NAME_LENGHT = 2
 LEN_LASTNAME_LENGHT = 2
+LEN_BIRTHDATE_LENGHT = 2
 
 def decode_bet(socket):
 
@@ -40,9 +40,10 @@ def decode_bet(socket):
     (document,) = struct.unpack('!Q', payload[offset:offset+DOCUMENT_LENGHT])
     offset += DOCUMENT_LENGHT
 
-    birthdate_bytes = payload[offset:offset+BIRTHDATE_LENGHT]
-    offset += BIRTHDATE_LENGHT
-    birthdate = birthdate_bytes.decode('ascii')
+    (birthdate_len,) = struct.unpack("!H", payload[offset:offset + LEN_BIRTHDATE_LENGHT])
+    offset += LEN_BIRTHDATE_LENGHT
+    birthdate = payload[offset:offset+birthdate_len].decode("utf-8")
+    offset += birthdate_len
     
     (number,) = struct.unpack('!H', payload[offset:offset+NUMBER_LENGHT])
     offset += NUMBER_LENGHT
