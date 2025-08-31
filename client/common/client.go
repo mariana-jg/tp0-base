@@ -2,6 +2,8 @@ package common
 
 import (
 	"encoding/binary"
+	"encoding/csv"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -141,24 +143,75 @@ func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 
 func (c *Client) MakeBet(path string) bool {
 	agency, _ := strconv.Atoi(c.config.ID)
-	bets, err := c.ReadBetsFromFile(path, agency)
-	if err != nil {
-		return false
-	}
-	batches := c.CreateBatch(bets)
 
 	if c.mustStop() {
 		return false
 	}
-
-	allSucceeded := true
 
 	if err := c.createClientSocket(); err != nil {
 		log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		return false
 	}
 
-	for _, batch := range batches {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Errorf("action: open_bets_file | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return false
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	batch := make([]*protocol.Bet, 0, c.config.BatchSize)
+	allSucceeded := true
+
+	for {
+		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("action: read_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			allSucceeded = false
+			break
+		}
+		if len(line) != 5 {
+			log.Errorf("action: read_bet | result: fail | client_id: %v | error: Incomplete data", c.config.ID)
+			continue
+		}
+
+		document, err := strconv.ParseUint(line[2], 10, 64)
+		if err != nil {
+			log.Errorf("action: parse_document | result: fail | value: %q | error: %v", line[2], err)
+			continue
+		}
+		number, err := strconv.ParseUint(line[4], 10, 16)
+		if err != nil {
+			log.Errorf("action: parse_number | result: fail | value: %q | error: %v", line[4], err)
+			continue
+		}
+
+		bet := protocol.NewBet(
+			uint8(agency),
+			line[0],
+			line[1],
+			document,
+			line[3],
+			uint16(number),
+		)
+		batch = append(batch, bet)
+
+		if len(batch) == c.config.BatchSize {
+			if c.sendBatch(batch) {
+				log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
+			} else {
+				log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
+				allSucceeded = false
+			}
+			batch = batch[:0]
+		}
+	}
+
+	if len(batch) > 0 {
 		if c.sendBatch(batch) {
 			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
 		} else {
