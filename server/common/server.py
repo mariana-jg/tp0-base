@@ -16,6 +16,7 @@ class Server:
         self._running = True
         signal.signal(signal.SIGTERM, self.shutdown)
         self._client_sockets = []
+        self._done_clients = 0
 
     """
     Closing of file descriptors is contemplated before the main application thread dies
@@ -58,22 +59,33 @@ class Server:
         client socket will also be closed
         """
         self._client_sockets.append(client_sock)
-        try:
-            type = packet_type(client_sock)
-            if type == 1:
-                bets = decode_bet_batch(client_sock)
-                len_bets = len(bets)
-                addr = client_sock.getpeername()
-                logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
-                store_bets(bets)
-                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
-                mustWriteAll(client_sock, struct.pack('>B', 1))                
-        except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
-        finally:
-            mustWriteAll(client_sock, struct.pack('>B', 1))
-            client_sock.close()
-            self._client_sockets.remove(client_sock)
+        while True:
+            try:
+                type = packet_type(client_sock)
+                logging.info(f'tipo de paquete {type}')
+                if type == b'\x01':
+                    bets = decode_bet_batch(client_sock)
+                    len_bets = len(bets)
+                    addr = client_sock.getpeername()
+                    logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
+                    store_bets(bets)
+                    logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
+                    mustWriteAll(client_sock, struct.pack('>B', 1))    
+                elif type == b'\x02':
+                    logging.info(f'action: termino el cliente')
+                    self._done_clients += 1
+                    mustWriteAll(client_sock, struct.pack('>B', 1))
+                    break       
+            except OSError as e:
+                logging.error("action: receive_message | result: fail | error: {e}")
+    
+        if self._done_clients == 2:
+            #cargar apuestas y cargar quien es ganador por cada una de las agencias
+            logging.info(f'SE TERMINO TODO')
+        client_sock.close()
+        logging.error("CERRE LA CONEXION")
+        self._client_sockets.remove(client_sock)        
+        
 
     def __accept_new_connection(self):
         """

@@ -37,11 +37,11 @@ func (c *Client) ReadBetsFromFile(pathBets string, agencia int) ([]*protocol.Bet
 			continue
 		}
 
-		document, _ := strconv.ParseUint(line[2], 10, 16)
+		document, _ := strconv.ParseUint(line[2], 10, 64)
 		name := line[0]
 		lastname := line[1]
 		birthdate := line[3]
-		number, _ := strconv.ParseUint(line[4], 10, 64)
+		number, _ := strconv.ParseUint(line[4], 10, 16)
 
 		bet := protocol.NewBet(
 			uint8(agencia),

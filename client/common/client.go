@@ -88,15 +88,31 @@ func (c *Client) mustStop() bool {
 func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 	message := protocol.BatchToBytes(batch)
 
-	if err := c.createClientSocket(); err != nil {
-		log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
+	//defer c.conn.Close()
+
+	if err := mustWriteAll(c.conn, message); err != nil {
+		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+			c.config.ID, err)
 		return false
 	}
+
+	ack, err := mustReadAll(c.conn, 1)
+	if err != nil {
+		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+			c.config.ID, err)
+		return false
+	}
+
+	return len(ack) == 1 && ack[0] == 1
+}
+
+func (c *Client) sendDone(agency int) bool {
+	message := protocol.DoneToBytes(uint8(agency))
 
 	defer c.conn.Close()
 
 	if err := mustWriteAll(c.conn, message); err != nil {
-		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
+		log.Errorf("action: no pude escrbir | result: fail | client_id: %v | error: %v",
 			c.config.ID, err)
 		return false
 	}
@@ -125,6 +141,11 @@ func (c *Client) MakeBet(path string) bool {
 
 	allSucceeded := true
 
+	if err := c.createClientSocket(); err != nil {
+		log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return false
+	}
+
 	for _, batch := range batches {
 		if c.sendBatch(batch) {
 			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
@@ -132,6 +153,13 @@ func (c *Client) MakeBet(path string) bool {
 			log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
 			allSucceeded = false
 		}
+	}
+
+	if c.sendDone(agency) {
+		log.Infof("action: termine | result: success | agency: %v", agency)
+	} else {
+		log.Infof("action: termine | result: fail | agency: %v", agency)
+		allSucceeded = false
 	}
 
 	log.Infof("action: exit | result: success")

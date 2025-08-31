@@ -16,6 +16,7 @@ type Bet struct {
 
 const (
 	TYPE_BET_BATCH = 1
+	TYPE_DONE      = 2
 )
 
 func NewBet(agency uint8, name string, lastname string, document uint64, birthdate string, number uint16) *Bet {
@@ -96,5 +97,11 @@ func BatchToBytes(batch []*Bet) []byte {
 		data = append(data, bet_bytes...)
 	}
 
+	return data
+}
+
+func DoneToBytes(agency uint8) []byte {
+	//[0]: 0x02 TYPE_DONE
+	data := []byte{TYPE_DONE, byte(agency)}
 	return data
 }
