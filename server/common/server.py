@@ -69,12 +69,7 @@ class Server:
                 if type == TYPE_BET:
                     self.__process_bet(client_sock)
                 elif type == TYPE_DONE:
-                    self._done_clients += 1
-                    agency_bytes = mustReadAll(client_sock, 1)
-                    agency = struct.unpack("!B", agency_bytes)[0]
-                    logging.info(f"action: done | result: success | agency: {agency}")
-                    self._waiting_winners[agency] = client_sock
-                    mustWriteAll(client_sock, struct.pack('>B', 1))
+                    self.__process_done(client_sock)
                     break
                 else:
                     break
@@ -82,6 +77,7 @@ class Server:
                 logging.error("action: receive_message | result: fail | error: {e}")
 
         if self._done_clients == self._expected_clients:
+            
             logging.info("action: sorteo | result: success")
             
             winners = {i: [] for i in range(1, self._expected_clients+1)}
@@ -90,17 +86,8 @@ class Server:
                 if has_won(bet):
                     winners[int(bet.agency)].append(int(bet.document))
 
-            for agency, sock in list(self._waiting_winners.items()):
-                documents = winners.get(int(agency), [])
-                mustWriteAll(sock, struct.pack('!H', len(documents)))  
-
-                for doc in documents:
-                    mustWriteAll(sock, struct.pack('!Q', int(doc)))  
-                try:
-                    sock.close()
-                except:
-                    pass
-                self._waiting_winners.pop(agency, None)        
+            self.__send_winners(winners)
+                  
 
     def __process_bet(self, client_sock):
         bets = decode_bet_batch(client_sock)
@@ -110,6 +97,27 @@ class Server:
         store_bets(bets)
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
         mustWriteAll(client_sock, struct.pack('>B', 1))  
+
+    def __process_done(self, client_sock):
+        self._done_clients += 1
+        agency_bytes = mustReadAll(client_sock, 1)
+        agency = struct.unpack("!B", agency_bytes)[0]
+        logging.info(f"action: done | result: success | agency: {agency}")
+        self._waiting_winners[agency] = client_sock
+        mustWriteAll(client_sock, struct.pack('>B', 1))
+
+    def __send_winners(self, winners):
+        for agency, sock in list(self._waiting_winners.items()):
+            documents = winners.get(int(agency), [])
+            mustWriteAll(sock, struct.pack('!H', len(documents)))  
+
+            for doc in documents:
+                mustWriteAll(sock, struct.pack('!Q', int(doc)))  
+            try:
+                sock.close()
+            except:
+                pass
+            self._waiting_winners.pop(agency, None)  
     
     def __accept_new_connection(self):
         """
