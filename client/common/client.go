@@ -121,8 +121,6 @@ func (c *Client) MakeBet(path string) bool {
 		return false
 	}
 
-	//defer c.conn.Close()
-
 	allSucceeded := true
 
 	for _, batch := range batches {
