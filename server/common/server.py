@@ -74,17 +74,15 @@ class Server:
         try:
             while True:
                 try:
-                    t = packet_type(client_sock)
-                    if t == 1:
+                    type = packet_type(client_sock)
+                    if type == 1:
                         bets = decode_bet_batch(client_sock)
                         addr = client_sock.getpeername()
                         logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
                         store_bets(bets)
                         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
                         mustWriteAll(client_sock, struct.pack('>B', 1))
-
-                    elif t == 2:
-                        # cliente terminó; recibo agencia
+                    elif type == 2:
                         agency_bytes = mustReadAll(client_sock, 1)
                         agency = struct.unpack("!B", agency_bytes)[0]
                         logging.info(f"action: done | result: success | agency: {agency}")
@@ -105,7 +103,6 @@ class Server:
                     if has_won(bet):
                         winners_local[int(bet.agency)].append(int(bet.document))
 
-                
                 for ag, docs in winners_local.items():
                     self._winners_shared[ag] = docs
                 logging.info("action: sorteo | result: success")
