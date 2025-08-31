@@ -273,4 +273,6 @@ Para el cumplimiento de este ejercicio, realicé los siguientes agregados a la i
 
 Para estos últimos dos puntos, se reutilizaron las funciones anteriores para las apuestas individuales.
 
-Además, un detalle a destacar, es el cambio en la implementación del protocolo ya que ahora lo que se envía no es solamente una apuesta individual, sino el batch como tira de bytes.
+Además, un detalle a destacar, es el cambio en la implementación del protocolo ya que ahora lo que se envía no es solamente una apuesta individual, sino el batch como tira de bytes. 
+
+Se abre un único socket hacia el servidor, se envían todas las apuestas y cuando se termina, se envía un mensaje de fin para cerrar la conexión.
