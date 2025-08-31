@@ -7,7 +7,7 @@ from common.protocol_codec import *
 
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, expected_clients):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
@@ -17,7 +17,7 @@ class Server:
         signal.signal(signal.SIGTERM, self.shutdown)
         self._client_sockets = []
         self._done_clients = 0
-        self._expected_clients = 3
+        self._expected_clients = expected_clients
         self._waiting_winners = {}
 
     """
