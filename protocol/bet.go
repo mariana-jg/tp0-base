@@ -26,52 +26,59 @@ func NewBet(agency uint8, name string, lastname string, document uint64, birthda
 }
 
 func (bp Bet) ToBytes() ([]byte, error) {
-
 	var payload bytes.Buffer
 
-	err := payload.WriteByte(bp.Agency)
-	if err != nil {
+	// 1) agency (uint8)
+	if err := payload.WriteByte(bp.Agency); err != nil {
 		return nil, err
 	}
 
+	// 2) name_len (uint16) + name (bytes)
 	nameBytes := []byte(bp.Name)
-	err = binary.Write(&payload, binary.BigEndian, uint16(len(nameBytes)))
-	if err != nil {
+	if err := binary.Write(&payload, binary.BigEndian, uint16(len(nameBytes))); err != nil {
 		return nil, err
 	}
-	payload.WriteString(bp.Name)
+	if _, err := payload.Write(nameBytes); err != nil {
+		return nil, err
+	}
 
+	// 3) last_name_len (uint16) + last_name (bytes)
 	lastnameBytes := []byte(bp.Lastname)
-	err = binary.Write(&payload, binary.BigEndian, uint16(len(lastnameBytes)))
-	if err != nil {
+	if err := binary.Write(&payload, binary.BigEndian, uint16(len(lastnameBytes))); err != nil {
 		return nil, err
 	}
-	payload.WriteString(bp.Lastname)
-
-	err = binary.Write(&payload, binary.BigEndian, bp.Document)
-	if err != nil {
+	if _, err := payload.Write(lastnameBytes); err != nil {
 		return nil, err
 	}
 
-	_, err = payload.Write([]byte(bp.Birthdate))
-	if err != nil {
+	// 4) document (uint64)
+	if err := binary.Write(&payload, binary.BigEndian, bp.Document); err != nil {
 		return nil, err
 	}
 
-	err = binary.Write(&payload, binary.BigEndian, bp.Number)
-	if err != nil {
+	// 5) birth_len (uint16) + birth (bytes)
+	birthBytes := []byte(bp.Birthdate) // ej: "YYYY-MM-DD" o el formato que uses
+	if err := binary.Write(&payload, binary.BigEndian, uint16(len(birthBytes))); err != nil {
+		return nil, err
+	}
+	if _, err := payload.Write(birthBytes); err != nil {
 		return nil, err
 	}
 
+	// 6) number (uint16)
+	if err := binary.Write(&payload, binary.BigEndian, bp.Number); err != nil {
+		return nil, err
+	}
+
+	// Frame: [frame_len (uint16)] + payload
 	data := payload.Bytes()
 	var frame bytes.Buffer
-
-	err = binary.Write(&frame, binary.BigEndian, uint16(len(data)))
-	if err != nil {
+	if err := binary.Write(&frame, binary.BigEndian, uint16(len(data))); err != nil {
 		return nil, err
 	}
-
-	frame.Write(data)
+	if _, err := frame.Write(data); err != nil {
+		return nil, err
+	}
 
 	return frame.Bytes(), nil
 }
