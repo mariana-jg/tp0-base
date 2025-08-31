@@ -211,6 +211,6 @@ func (c *Client) MakeBet(path string) bool {
 			allSucceeded = false
 	}*/
 
-	//log.Infof("action: exit | result: success")
+	log.Infof("action: exit | result: success")
 	return allSucceeded
 }
