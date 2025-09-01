@@ -1,7 +1,8 @@
 package common
 
 import (
-	"encoding/binary"
+	"encoding/csv"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -86,79 +87,54 @@ func (c *Client) mustStop() bool {
 	}
 }
 
-func (c *Client) sendBatch(batch []*protocol.Bet) bool {
-	message := protocol.BatchToBytes(batch)
-
-	if err := mustWriteAll(c.conn, message); err != nil {
-		log.Errorf("action: apuesta_enviada | result: fail | client_id: %v | error: %v",
-			c.config.ID, err)
-		return false
-	}
-
-	ack, err := mustReadAll(c.conn, 1)
-	if err != nil {
-		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
-			c.config.ID, err)
-		return false
-	}
-
-	return len(ack) == 1 && ack[0] == 1
-}
-
-func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
-	message := protocol.DoneToBytes(uint8(agency))
-
-	if err := mustWriteAll(c.conn, message); err != nil {
-		log.Errorf("action: done_enviado | result: fail | client_id: %v | error: %v",
-			c.config.ID, err)
-		return nil, false
-	}
-
-	ack, err := mustReadAll(c.conn, 1)
-	if err == nil && len(ack) == 1 && ack[0] == 1 {
-		log.Infof("action: ack_from_server | result: success | agency: %v", agency)
-	}
-
-	countB, err := mustReadAll(c.conn, 2)
-	if err != nil {
-		log.Errorf("action: read_winners_count | result: fail | err: %v", err)
-		return nil, false
-	}
-	count := binary.BigEndian.Uint16(countB)
-
-	winners := make([]uint64, 0, count)
-	for i := 0; i < int(count); i++ {
-		dniB, err := mustReadAll(c.conn, 8)
-		if err != nil {
-			log.Errorf("action: read_winner_dni | result: fail | err: %v", err)
-			return nil, false
-		}
-		winners = append(winners, binary.BigEndian.Uint64(dniB))
-	}
-
-	return winners, true
-}
-
 func (c *Client) MakeBet(path string) bool {
 	agency, _ := strconv.Atoi(c.config.ID)
-	bets, err := c.ReadBetsFromFile(path, agency)
-	if err != nil {
-		return false
-	}
-	batches := c.CreateBatch(bets)
 
 	if c.mustStop() {
 		return false
 	}
-
-	allSucceeded := true
 
 	if err := c.createClientSocket(); err != nil {
 		log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		return false
 	}
 
-	for _, batch := range batches {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Errorf("action: open_bets_file | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return false
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	batch := make([]*protocol.Bet, 0, c.config.BatchSize)
+	allSucceeded := true
+
+	for {
+		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		bet, err := parseBetLine(line, agency)
+		if err != nil {
+			log.Errorf("action: parse_bet_line | result: fail | error: %s", err)
+			allSucceeded = false
+			continue
+		}
+		batch = append(batch, bet)
+
+		if len(batch) == c.config.BatchSize {
+			if c.sendBatch(batch) {
+				log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
+			} else {
+				log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
+				allSucceeded = false
+			}
+			batch = batch[:0]
+		}
+	}
+
+	if len(batch) > 0 {
 		if c.sendBatch(batch) {
 			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
 		} else {
