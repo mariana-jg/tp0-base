@@ -4,11 +4,11 @@ import signal
 from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
-from multiprocessing import Process, Manager, Barrier, Lock
-from threading import BrokenBarrierError
+from multiprocessing import Process, Manager, Barrier, Lock, BrokenBarrierError
 
 TYPE_BET = 1
 TYPE_DONE = 2
+SERVER_SHUTDOWN = 255
 
 class Server:
     def __init__(self, port, listen_backlog, expected_clients):
@@ -32,8 +32,21 @@ class Server:
 
     def shutdown(self, signum, frame):
         self._running = False
-        self._server_socket.close()
+        try:
+            self._barrier.abort()
+        except Exception:
+            pass
+        try:
+            self._server_socket.close()
+        except OSError:
+            pass
         logging.info("action: exit | result: success")
+
+    def __send_shutdown(self, sock):
+        try:
+            mustWriteAll(sock, (SERVER_SHUTDOWN).to_bytes(1, "big"))
+        except Exception:
+            pass
 
     def run(self):
         """
@@ -82,12 +95,19 @@ class Server:
                 except OSError as e:
                     logging.error(f"action: receive_message | result: fail | error: {e}")
                     return
+            try:
+                index = self._barrier.wait()  
+            except BrokenBarrierError:
+                self.__send_shutdown(client_sock)
+                return
             
-            index = self._barrier.wait()  
             if index == 0:
                 self.__draw_winners()
-
-            self._barrier.wait()
+            try:
+                self._barrier.wait()
+            except BrokenBarrierError:
+                self.__send_shutdown(client_sock)
+                return
             if agency is not None:
                 self.__send_winners(client_sock, agency)
         finally:
