@@ -5,6 +5,7 @@ from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
 from multiprocessing import Process, Manager, Barrier, Lock
+from threading import BrokenBarrierError
 
 TYPE_BET = 1
 TYPE_DONE = 2
@@ -81,10 +82,7 @@ class Server:
                     if type == TYPE_BET:
                         self.__process_bet(client_sock)
                     elif type == TYPE_DONE:
-                        agency_bytes = mustReadAll(client_sock, 1)
-                        agency = int.from_bytes(agency_bytes, "big")
-                        logging.info(f"action: done | result: success | agency: {agency}")
-                        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
+                        self.__process_done(client_sock)
                         break
                     else:
                         break
@@ -129,6 +127,12 @@ class Server:
         with self._io_lock:
             store_bets(bets)
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
+
+    def __process_done(self, client_sock):
+        agency_bytes = mustReadAll(client_sock, 1)
+        agency = int.from_bytes(agency_bytes, "big")
+        logging.info(f"action: done | result: success | agency: {agency}")
         mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
     def __accept_new_connection(self):
