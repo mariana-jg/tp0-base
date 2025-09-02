@@ -4,7 +4,7 @@ import signal
 from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
-from multiprocessing import Process, Manager, Barrier
+from multiprocessing import Process, Manager, Barrier, Lock
 
 TYPE_BET = 1
 TYPE_DONE = 2
@@ -26,6 +26,7 @@ class Server:
         self._winners_shared = self.manager.dict()
         # bloquea procesos hasta que hayan llegado exactamente expected_clients a ese mismo punto
         self._barrier = Barrier(expected_clients) 
+        self._io_lock = Lock()
 
 
     """
@@ -130,7 +131,8 @@ class Server:
         bets = decode_bet_batch(client_sock)
         addr = client_sock.getpeername()
         logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
-        store_bets(bets)
+        with self._io_lock:
+            store_bets(bets)
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
         mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
