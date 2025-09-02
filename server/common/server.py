@@ -60,6 +60,10 @@ class Server:
                     p = Process(target=self.__handle_client_connection, args=(client_sock,))
                     p.daemon = True
                     p.start()
+                try: 
+                    client_sock.close()
+                except OSError:
+                    pass
             except socket.timeout:
                 continue
             except OSError:
