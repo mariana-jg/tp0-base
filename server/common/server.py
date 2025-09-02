@@ -82,7 +82,7 @@ class Server:
                     if type == TYPE_BET:
                         self.__process_bet(client_sock)
                     elif type == TYPE_DONE:
-                        self.__process_done(client_sock)
+                        agency = self.__process_done(client_sock)
                         break
                     else:
                         break
@@ -129,11 +129,12 @@ class Server:
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
         mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
-    def __process_done(self, client_sock):
+    def __process_done(self, client_sock) -> int:
         agency_bytes = mustReadAll(client_sock, 1)
         agency = int.from_bytes(agency_bytes, "big")
         logging.info(f"action: done | result: success | agency: {agency}")
         mustWriteAll(client_sock, (1).to_bytes(1, "big"))
+        return agency
 
     def __accept_new_connection(self):
         """
