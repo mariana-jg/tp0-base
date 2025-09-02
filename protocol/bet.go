@@ -15,9 +15,8 @@ type Bet struct {
 }
 
 const (
-	TYPE_BET_BATCH      = 1
-	TYPE_DONE           = 2
-	TYPE_REQUEST_WINNER = 3
+	TYPE_BET_BATCH = 1
+	TYPE_DONE      = 2
 )
 
 func NewBet(agency uint8, name string, lastname string, document uint64, birthdate string, number uint16) *Bet {
