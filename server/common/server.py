@@ -4,7 +4,8 @@ import signal
 from common.utils import *
 from common.socket_utils import *
 from common.protocol_codec import *
-from multiprocessing import Process, Manager, Barrier, Lock, BrokenBarrierError
+from multiprocessing import Process, Manager, Barrier, Lock
+from threading import BrokenBarrierError
 
 TYPE_BET = 1
 TYPE_DONE = 2
