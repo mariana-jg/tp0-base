@@ -6,6 +6,9 @@ import (
 	"github.com/7574-sistemas-distribuidos/docker-compose-init/protocol"
 )
 
+const SERVER_SHUTDOWN = 255
+const ACK = 1
+
 func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 	message := protocol.BatchToBytes(batch)
 
@@ -22,7 +25,16 @@ func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 		return false
 	}
 
-	return len(ack) == 1 && ack[0] == 1
+	switch ack[0] {
+	case SERVER_SHUTDOWN:
+		log.Infof("action: server_shutdown | result: detected | client_id: %v", c.config.ID)
+		return false
+	case 1:
+		return true
+	default:
+		return false
+
+	}
 }
 
 func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
@@ -35,8 +47,13 @@ func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 	}
 
 	ack, err := mustReadAll(c.conn, 1)
-	if err == nil && len(ack) == 1 && ack[0] == 1 {
+	if err == nil && len(ack) == 1 && ack[0] == ACK {
 		log.Infof("action: read_ack_done | result: success | agency: %v", agency)
+	}
+
+	if ack[0] == SERVER_SHUTDOWN {
+		log.Infof("action: server_shutdown | result: detected | client_id: %v", c.config.ID)
+		return nil, false
 	}
 
 	countB, err := mustReadAll(c.conn, 2)
