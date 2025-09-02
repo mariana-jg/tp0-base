@@ -94,16 +94,7 @@ class Server:
             index = self._barrier.wait()  
             # el ultimo que llego hace el sorteo (de indice 0)
             if index == 0:
-                logging.info("action: sorteo | result: in_progress")
-                winners_local = {i: [] for i in range(1, self._expected_clients + 1)}
-                for bet in load_bets():
-                    if has_won(bet):
-                        winners_local[int(bet.agency)].append(int(bet.document))
-
-                for ag, docs in winners_local.items():
-                    self._winners_shared[ag] = docs
-                logging.info("action: sorteo | result: success")
-
+                self.__draw_winners()
             # Barrera 2 para que todos esperen a que el sorteo se envie, 
             # cada hijo responde a su cliente con su lista de ganadores y cierra.
             # nadie sigue hasta que el sorteo salga
@@ -135,6 +126,16 @@ class Server:
         logging.info(f"action: done | result: success | agency: {agency}")
         mustWriteAll(client_sock, (1).to_bytes(1, "big"))
         return agency
+
+    def __draw_winners(self):
+        logging.info("action: sorteo | result: in_progress")
+        winners_local = {i: [] for i in range(1, self._expected_clients + 1)}
+        for bet in load_bets():
+            if has_won(bet):
+                winners_local[int(bet.agency)].append(int(bet.document))
+        for ag, docs in winners_local.items():
+            self._winners_shared[ag] = docs
+        logging.info("action: sorteo | result: success")
 
     def __accept_new_connection(self):
         """
