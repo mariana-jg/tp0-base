@@ -1,4 +1,3 @@
-import struct
 from common.utils import *
 from common.socket_utils import *
 
@@ -16,7 +15,7 @@ def decode_bet(socket):
     if total_lenght_bytes is None:
         return None
     
-    (payload_len,) = struct.unpack("!H", total_lenght_bytes)
+    payload_len = int.from_bytes(total_lenght_bytes, "big")
     
     payload = mustReadAll(socket, payload_len)
     if payload is None:
@@ -27,25 +26,25 @@ def decode_bet(socket):
     agency = payload[offset]
     offset += AGENCY_LENGHT
 
-    (name_len,) = struct.unpack("!H", payload[offset:offset + LEN_NAME_LENGHT])
+    name_len = int.from_bytes(payload[offset:offset + LEN_NAME_LENGHT], "big")
     offset += LEN_NAME_LENGHT
     name = payload[offset:offset+name_len].decode("utf-8")
     offset += name_len
 
-    (lastname_len,) = struct.unpack("!H", payload[offset:offset + LEN_LASTNAME_LENGHT])
+    lastname_len = int.from_bytes(payload[offset:offset + LEN_LASTNAME_LENGHT], "big")
     offset += LEN_LASTNAME_LENGHT
     lastname = payload[offset:offset+lastname_len].decode("utf-8")
     offset += lastname_len    
 
-    (document,) = struct.unpack('!Q', payload[offset:offset+DOCUMENT_LENGHT])
+    document = int.from_bytes(payload[offset:offset+DOCUMENT_LENGHT], "big")
     offset += DOCUMENT_LENGHT
 
-    (birthdate_len,) = struct.unpack("!H", payload[offset:offset + LEN_BIRTHDATE_LENGHT])
+    birthdate_len = int.from_bytes(payload[offset:offset + LEN_BIRTHDATE_LENGHT], "big")
     offset += LEN_BIRTHDATE_LENGHT
     birthdate = payload[offset:offset+birthdate_len].decode("utf-8")
     offset += birthdate_len
     
-    (number,) = struct.unpack('!H', payload[offset:offset+NUMBER_LENGHT])
+    number = int.from_bytes(payload[offset:offset+NUMBER_LENGHT], "big")
     offset += NUMBER_LENGHT
 
     return Bet(agency, name, lastname, document, birthdate, number)
