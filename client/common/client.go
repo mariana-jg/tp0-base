@@ -145,9 +145,9 @@ func (c *Client) MakeBet(path string) bool {
 
 	var vacio []*protocol.Bet
 	if c.sendBatch(vacio) {
-		log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(vacio))
+		log.Infof("action: fin_batches | result: success")
 	} else {
-		log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(vacio))
+		log.Infof("action: fin_batches | result: fail")
 		allSucceeded = false
 	}
 
