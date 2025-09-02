@@ -36,11 +36,6 @@ class Server:
     def shutdown(self, signum, frame):
         self._running = False
         self._server_socket.close()
-        for socket in self._client_sockets:
-            try:
-                socket.close()
-            except OSError:
-                pass    
         logging.info("action: exit | result: success")
 
     def run(self):
