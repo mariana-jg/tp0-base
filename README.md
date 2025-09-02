@@ -288,3 +288,16 @@ Quedando el paquete enviado con esta estructura `[Type(1B) + Len(2B) + payload]`
 El servidor cuando le llega un paquete, lee el tipo del mismo y a partir de allí:
 * Si es una apuesta, la procesa y envía un paquete de confirmación.
 * Si es un mensaje del cliente avisando que terminó, procede a cortar el bucle de lectura y verifica si la cantidad de clientes que terminaron era la esperada que se conectaran (se añadió que el server conozca la cantidad de clientes que se conectarán, cambio realizado en el `main.py` y en `mi-generador.py`). Si todos los clientes ya avisaron que terminaron y se encuentran esperando por el resultado del sorteo, el sorteo se realiza y se envían los resultados de los ganadores a los clientes, cerrando luego sus respectivas conexiones.
+
+### Ejercicio N°8:
+
+Para el cumplimiento de este ejercicio, se utilizó la librería `multiprocessing` de Python utilizando `Process`, `Manager` y `Barrier` para evitar las limitaciones del GIL del lenguaje, trabajando con procesos independientes para manejar cada cliente.
+
+Se utilizan barreras (en específico 2) que bloquean los procesos hasta que hayan llegado exactamente los clientes esperados a ese mismo punto.
+
+##### Flujo del servidor concurrente
+
+* Para cada cliente se crea un proceso que corre en segundo plano.
+* Cada proceso se encarga de recibir y procesar todas las apuestas de su cliente. Cuando se recibe un paquete del tipo TYPE_DONE, se corta el bucle y pasa a sincronizarse.
+* Tenemos una primer barrera para asegurar que todos hayan terminado de enviar las apuestas, algún proceso que llega (es random la elección) es el encargado de realizar el sorteo.
+* Se utiliza una segunda barrera para que todos esperen a que el sorteo se realice (se cargan los ganadores en la estructura `Manager().dict()`), cada hijo responde a su cliente con su lista de ganadores y cierra. De esta manera, cuando salen de la barrera todos tienen el resultado listo.
