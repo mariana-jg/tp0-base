@@ -129,7 +129,7 @@ class Server:
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
         mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
-    def __process_done(self, client_sock) -> int:
+    def __process_done(self, client_sock):
         agency_bytes = mustReadAll(client_sock, 1)
         agency = int.from_bytes(agency_bytes, "big")
         logging.info(f"action: done | result: success | agency: {agency}")
