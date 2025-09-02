@@ -17,7 +17,7 @@ func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 
 	ack, err := mustReadAll(c.conn, 1)
 	if err != nil {
-		log.Errorf("action: read_ack | result: fail | client_id: %v | error: %v",
+		log.Errorf("action: read_ack_batch | result: fail | client_id: %v | error: %v",
 			c.config.ID, err)
 		return false
 	}
@@ -36,7 +36,7 @@ func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
 
 	ack, err := mustReadAll(c.conn, 1)
 	if err == nil && len(ack) == 1 && ack[0] == 1 {
-		log.Infof("action: ack_from_server | result: success | agency: %v", agency)
+		log.Infof("action: read_ack_done | result: success | agency: %v", agency)
 	}
 
 	countB, err := mustReadAll(c.conn, 2)
