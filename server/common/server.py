@@ -19,9 +19,7 @@ class Server:
         self._server_socket.settimeout(1)
         self._running = True
         signal.signal(signal.SIGTERM, self.shutdown)
-        self._done_clients = 0
         self._expected_clients = expected_clients
-        self._waiting_winners = {}
 
         self.manager = Manager()
         self._winners_shared = self.manager.dict()
