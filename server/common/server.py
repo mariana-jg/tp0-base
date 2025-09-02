@@ -83,12 +83,12 @@ class Server:
                         logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
                         store_bets(bets)
                         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-                        mustWriteAll(client_sock, struct.pack('>B', 1))
+                        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
                     elif type == 2:
                         agency_bytes = mustReadAll(client_sock, 1)
-                        agency = struct.unpack("!B", agency_bytes)[0]
+                        agency = int.from_bytes(agency_bytes, "big")
                         logging.info(f"action: done | result: success | agency: {agency}")
-                        mustWriteAll(client_sock, struct.pack('>B', 1))
+                        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
                         break
                     else:
                         break
@@ -117,9 +117,9 @@ class Server:
             self._barrier.wait()
             if agency is not None:
                 docs = list(self._winners_shared.get(int(agency), []))
-                mustWriteAll(client_sock, struct.pack('!H', len(docs)))
+                mustWriteAll(client_sock, len(docs).to_bytes(2, "big"))
                 for doc in docs:
-                    mustWriteAll(client_sock, struct.pack('!Q', int(doc)))
+                    mustWriteAll(client_sock, int(doc).to_bytes(8, "big"))
         finally:
             try:
                 client_sock.close()
