@@ -28,12 +28,10 @@ func NewBet(agency uint8, name string, lastname string, document uint64, birthda
 func (bp Bet) ToBytes() ([]byte, error) {
 	var payload bytes.Buffer
 
-	// 1) agency (uint8)
 	if err := payload.WriteByte(bp.Agency); err != nil {
 		return nil, err
 	}
 
-	// 2) name_len (uint16) + name (bytes)
 	nameBytes := []byte(bp.Name)
 	if err := binary.Write(&payload, binary.BigEndian, uint16(len(nameBytes))); err != nil {
 		return nil, err
@@ -42,7 +40,6 @@ func (bp Bet) ToBytes() ([]byte, error) {
 		return nil, err
 	}
 
-	// 3) last_name_len (uint16) + last_name (bytes)
 	lastnameBytes := []byte(bp.Lastname)
 	if err := binary.Write(&payload, binary.BigEndian, uint16(len(lastnameBytes))); err != nil {
 		return nil, err
@@ -51,13 +48,11 @@ func (bp Bet) ToBytes() ([]byte, error) {
 		return nil, err
 	}
 
-	// 4) document (uint64)
 	if err := binary.Write(&payload, binary.BigEndian, bp.Document); err != nil {
 		return nil, err
 	}
 
-	// 5) birth_len (uint16) + birth (bytes)
-	birthBytes := []byte(bp.Birthdate) // ej: "YYYY-MM-DD" o el formato que uses
+	birthBytes := []byte(bp.Birthdate)
 	if err := binary.Write(&payload, binary.BigEndian, uint16(len(birthBytes))); err != nil {
 		return nil, err
 	}
@@ -65,12 +60,10 @@ func (bp Bet) ToBytes() ([]byte, error) {
 		return nil, err
 	}
 
-	// 6) number (uint16)
 	if err := binary.Write(&payload, binary.BigEndian, bp.Number); err != nil {
 		return nil, err
 	}
 
-	// Frame: [frame_len (uint16)] + payload
 	data := payload.Bytes()
 	var frame bytes.Buffer
 	if err := binary.Write(&frame, binary.BigEndian, uint16(len(data))); err != nil {
