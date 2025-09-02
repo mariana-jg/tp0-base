@@ -81,12 +81,7 @@ class Server:
                 try:
                     type = packet_type(client_sock)
                     if type == TYPE_BET:
-                        bets = decode_bet_batch(client_sock)
-                        addr = client_sock.getpeername()
-                        logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
-                        store_bets(bets)
-                        logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-                        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
+                        self.__process_bet(client_sock)
                     elif type == TYPE_DONE:
                         agency_bytes = mustReadAll(client_sock, 1)
                         agency = int.from_bytes(agency_bytes, "big")
@@ -132,6 +127,14 @@ class Server:
                 self._client_sockets.remove(client_sock)
             except:
                 pass     
+
+    def __process_bet(self, client_sock):
+        bets = decode_bet_batch(client_sock)
+        addr = client_sock.getpeername()
+        logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
+        store_bets(bets)
+        logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
     def __accept_new_connection(self):
         """
