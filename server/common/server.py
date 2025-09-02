@@ -18,7 +18,6 @@ class Server:
         self._server_socket.settimeout(1)
         self._running = True
         signal.signal(signal.SIGTERM, self.shutdown)
-        self._client_sockets = []
         self._done_clients = 0
         self._expected_clients = expected_clients
         self._waiting_winners = {}
@@ -76,7 +75,6 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
-        self._client_sockets.append(client_sock)
         agency = None
         # Cada proceso hijo procesa todas las apuestas de su cliente  y cuando 
         # se envia el paquete de type 2, rompe el bucle y pasa a sincronizarse.
@@ -125,10 +123,6 @@ class Server:
         finally:
             try:
                 client_sock.close()
-            except:
-                pass
-            try:
-                self._client_sockets.remove(client_sock)
             except:
                 pass     
 
