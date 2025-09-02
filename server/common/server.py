@@ -62,14 +62,14 @@ class Server:
             try:
                 bets = decode_bet_batch(client_sock)
                 if bets == []:
-                    mustWriteAll(client_sock, struct.pack('>B', 1))
+                    mustWriteAll(client_sock, (1).to_bytes(1, "big"))
                     break
                 len_bets = len(bets)
                 addr = client_sock.getpeername()
                 logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
                 store_bets(bets)
                 logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
-                mustWriteAll(client_sock, struct.pack('>B', 1))
+                mustWriteAll(client_sock, (1).to_bytes(1, "big"))
             except OSError as e:
                 logging.error("action: receive_message | result: fail | error: {e}")
         
