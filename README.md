@@ -269,10 +269,24 @@ Se agregó dentro del cliente luego de consultar en clase el reintento de conexi
 Para el cumplimiento de este ejercicio, realicé los siguientes agregados a la implementación:
 * Lectura de las apuestas en archivo .CSV.
 * Armado de los batches y serialización para que envíe el cliente.
-* Deserialización de los batches en el servidor
+* Deserialización de los batches en el servidor.
 
 Para estos últimos dos puntos, se reutilizaron las funciones anteriores para las apuestas individuales.
 
 Además, un detalle a destacar, es el cambio en la implementación del protocolo ya que ahora lo que se envía no es solamente una apuesta individual, sino el batch como tira de bytes.
 
 Se abre un único socket hacia el servidor, se envían todas las apuestas y cuando se termina, se envía un mensaje de fin para cerrar la conexión.
+
+### Ejercicio N°7:
+
+Para el cumplimiento de este ejercicio, el cambio principal fue dentro del protocolo de comunicación, ya que se agrego como primer componente de los paquetes un byte que identificaba el tipo:
+* TYPE_BET: para identificar a una apuesta que envía un cliente.
+* TYPE_DONE: para identificar que el cliente terminó de realizar todas las apuestas.
+
+Quedando el paquete enviado con esta estructura `[Type(1B) + Len(2B) + payload]`.
+
+El servidor cuando le llega un paquete, lee el tipo del mismo y a partir de allí:
+* Si es una apuesta, la procesa y envía un paquete de confirmación.
+* Si es un mensaje del cliente avisando que terminó, procede a cortar el bucle de lectura y verifica si la cantidad de clientes que terminaron era la esperada que se conectaran (se añadió que el server conozca la cantidad de clientes que se conectarán, cambio realizado en el `main.py` y en `mi-generador.py`). Si todos los clientes ya avisaron que terminaron y se encuentran esperando por el resultado del sorteo, el sorteo se realiza y se envían los resultados de los ganadores a los clientes, cerrando luego sus respectivas conexiones.
+
+
