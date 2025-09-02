@@ -25,10 +25,8 @@ class Server:
 
         self.manager = Manager()
         self._winners_shared = self.manager.dict()
-        # bloquea procesos hasta que hayan llegado exactamente expected_clients a ese mismo punto
         self._barrier = Barrier(expected_clients) 
         self._io_lock = Lock()
-
 
     """
     Closing of file descriptors is contemplated before the main application thread dies
@@ -52,7 +50,6 @@ class Server:
             try:
                 client_sock = self.__accept_new_connection()
                 if client_sock:
-                    # Creacion del proceso hijo en segundo plano
                     p = Process(target=self.__handle_client_connection, args=(client_sock,))
                     p.daemon = True
                     p.start()
@@ -73,8 +70,6 @@ class Server:
         client socket will also be closed
         """
         agency = None
-        # Cada proceso hijo procesa todas las apuestas de su cliente  y cuando 
-        # se envia el paquete de type 2, rompe el bucle y pasa a sincronizarse.
         try:
             while True:
                 try:
@@ -90,21 +85,13 @@ class Server:
                     logging.error(f"action: receive_message | result: fail | error: {e}")
                     return
             
-            # Barrera 1 para que todos hayan terminado de enviar las apuestas
             index = self._barrier.wait()  
-            # el ultimo que llego hace el sorteo (de indice 0)
             if index == 0:
                 self.__draw_winners()
-            # Barrera 2 para que todos esperen a que el sorteo se envie, 
-            # cada hijo responde a su cliente con su lista de ganadores y cierra.
-            # nadie sigue hasta que el sorteo salga
-            # de esta forma cuando salen de la barrera todos tienen el resultado listo.
+
             self._barrier.wait()
             if agency is not None:
-                docs = list(self._winners_shared.get(int(agency), []))
-                mustWriteAll(client_sock, len(docs).to_bytes(2, "big"))
-                for doc in docs:
-                    mustWriteAll(client_sock, int(doc).to_bytes(8, "big"))
+                self.__send_winners(client_sock, agency)
         finally:
             try:
                 client_sock.close()
@@ -136,6 +123,12 @@ class Server:
         for ag, docs in winners_local.items():
             self._winners_shared[ag] = docs
         logging.info("action: sorteo | result: success")
+
+    def __send_winners(self, client_sock, agency):
+        docs = list(self._winners_shared.get(int(agency), []))
+        mustWriteAll(client_sock, len(docs).to_bytes(2, "big"))
+        for doc in docs:
+            mustWriteAll(client_sock, int(doc).to_bytes(8, "big"))
 
     def __accept_new_connection(self):
         """
