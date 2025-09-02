@@ -96,23 +96,23 @@ class Server:
         logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
         store_bets(bets)
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len_bets}')
-        mustWriteAll(client_sock, struct.pack('>B', 1))  
+        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
     def __process_done(self, client_sock):
         self._done_clients += 1
         agency_bytes = mustReadAll(client_sock, 1)
-        agency = struct.unpack("!B", agency_bytes)[0]
+        agency = int.from_bytes(agency_bytes, "big")
         logging.info(f"action: done | result: success | agency: {agency}")
         self._waiting_winners[agency] = client_sock
-        mustWriteAll(client_sock, struct.pack('>B', 1))
+        mustWriteAll(client_sock, (1).to_bytes(1, "big"))
 
     def __send_winners(self, winners):
         for agency, sock in list(self._waiting_winners.items()):
             documents = winners.get(int(agency), [])
-            mustWriteAll(sock, struct.pack('!H', len(documents)))  
+            mustWriteAll(sock, len(documents).to_bytes(2, "big"))
 
             for doc in documents:
-                mustWriteAll(sock, struct.pack('!Q', int(doc)))  
+                mustWriteAll(sock, int(doc).to_bytes(8, "big"))
             try:
                 sock.close()
             except:
