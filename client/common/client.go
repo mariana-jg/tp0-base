@@ -151,6 +151,8 @@ func (c *Client) MakeBet(path string) bool {
 		allSucceeded = false
 	}
 
+	time.Sleep(1 * time.Second)
+
 	c.conn.Close()
 	log.Infof("action: exit | result: success")
 	return allSucceeded
