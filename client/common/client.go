@@ -89,15 +89,14 @@ func (c *Client) mustStop() bool {
 
 func (c *Client) MakeBet(path string) bool {
 	agency, _ := strconv.Atoi(c.config.ID)
-
 	if c.mustStop() {
 		return false
 	}
-
 	if err := c.createClientSocket(); err != nil {
 		log.Errorf("action: connect | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		return false
 	}
+	defer c.conn.Close()
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -124,31 +123,44 @@ func (c *Client) MakeBet(path string) bool {
 		batch = append(batch, bet)
 
 		if len(batch) == c.config.BatchSize {
-			if c.sendBatch(batch) {
-				log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
-			} else {
+			ok, err := c.sendBatch(batch)
+			if err == ErrServerShutdown {
+				_ = c.conn.Close()
+				return false
+			}
+			if err != nil || !ok {
 				log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
 				allSucceeded = false
+				break // cortar el loop si falló envío/ACK
 			}
+			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
 			batch = batch[:0]
 		}
 	}
 
 	if len(batch) > 0 {
-		if c.sendBatch(batch) {
-			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
-		} else {
+		ok, err := c.sendBatch(batch)
+		if err == ErrServerShutdown {
+			_ = c.conn.Close()
+			return false
+		}
+		if err != nil || !ok {
 			log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
 			allSucceeded = false
+		} else {
+			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
 		}
 	}
 
-	winners, ok := c.sendDoneAndReadWinners(agency)
-	if ok {
-		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", len(winners))
-	} else {
-		log.Infof("action: consulta_ganadores | result: fail | cant_ganadores: 0")
+	winners, err := c.sendDoneAndReadWinners(agency)
+	if err == ErrServerShutdown {
+		_ = c.conn.Close()
+		return false
 	}
-	c.conn.Close()
+	if err != nil {
+		log.Infof("action: consulta_ganadores | result: fail | cant_ganadores: 0")
+	} else {
+		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", len(winners))
+	}
 	return allSucceeded
 }
