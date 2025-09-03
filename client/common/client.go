@@ -149,6 +149,6 @@ func (c *Client) MakeBet(path string) bool {
 	} else {
 		log.Infof("action: consulta_ganadores | result: fail | cant_ganadores: 0")
 	}
-
+	c.conn.Close()
 	return allSucceeded
 }
