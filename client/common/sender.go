@@ -25,16 +25,16 @@ func (c *Client) sendBatch(batch []*protocol.Bet) bool {
 		return false
 	}
 
-	switch ack[0] {
-	case SERVER_SHUTDOWN:
+	if ack[0] == SERVER_SHUTDOWN {
 		log.Infof("action: server_shutdown | result: detected | client_id: %v", c.config.ID)
 		return false
-	case 1:
-		return true
-	default:
-		return false
-
 	}
+
+	if ack[0] == 1 {
+		return true
+	}
+
+	return false
 }
 
 func (c *Client) sendDoneAndReadWinners(agency int) ([]uint64, bool) {
