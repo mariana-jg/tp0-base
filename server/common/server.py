@@ -89,42 +89,46 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
-        agency = None
         try:
-            while True:
-                try:
-                    type = packet_type(client_sock)
-                    if type == TYPE_BET:
-                        self.__process_bet(client_sock)
-                    elif type == TYPE_DONE:
-                        agency = self.__process_done(client_sock)
-                        break
-                    else:
-                        break
-                except OSError as e:
-                    logging.error(f"action: receive_message | result: fail | error: {e}")
-                    return
+            agency = self.__recv_until_done(client_sock)
             try:
                 index = self._barrier.wait()  
             except BrokenBarrierError:
                 self.__send_shutdown(client_sock)
                 return
             
+            index = self.__wait_or_shutdown(client_sock)
+            if index is None:
+                return
+            
             if index == 0:
                 self.__draw_winners()
-            try:
-                self._barrier.wait()
-            except BrokenBarrierError:
-                self.__send_shutdown(client_sock)
+
+            if self.__wait_or_shutdown(client_sock) is None:
                 return
-            if agency is not None:
-                self.__send_winners(client_sock, agency)
+            
+            self.__send_winners(client_sock, agency)
         finally:
             try:
                 client_sock.close()
             except:
                 pass     
 
+    def __recv_until_done(self, sock):
+        while True:
+            try:
+                ptype = packet_type(sock)
+            except OSError as e:
+                logging.error(f"action: receive_message | result: fail | error: {e}")
+                return None
+
+            if ptype == TYPE_BET:
+                self.__process_bet(sock)
+            elif ptype == TYPE_DONE:
+                return self.__process_done(sock)
+            else:
+                return None
+    
     def __process_bet(self, client_sock):
         bets = decode_bet_batch(client_sock)
         addr = client_sock.getpeername()
@@ -156,6 +160,13 @@ class Server:
         mustWriteAll(client_sock, len(docs).to_bytes(2, "big"))
         for doc in docs:
             mustWriteAll(client_sock, int(doc).to_bytes(8, "big"))
+
+    def __wait_or_shutdown(self, sock):
+        try:
+            return self._barrier.wait()
+        except BrokenBarrierError:
+            self.__send_shutdown(sock)
+            return None
 
     def __accept_new_connection(self):
         """
