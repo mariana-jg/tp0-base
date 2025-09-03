@@ -26,6 +26,7 @@ class Server:
         self._winners_shared = self.manager.dict()
         self._barrier = Barrier(expected_clients) 
         self._io_lock = Lock()
+        self._children = []
 
     """
     Closing of file descriptors is contemplated before the main application thread dies
@@ -41,6 +42,13 @@ class Server:
             self._server_socket.close()
         except OSError:
             pass
+
+        for p in self._children:
+            if p.is_alive():
+                p.join(timeout=1)
+                if p.is_alive():
+                    p.terminate()
+                    
         logging.info("action: exit | result: success")
 
     def __send_shutdown(self, sock):
@@ -63,6 +71,7 @@ class Server:
                 client_sock = self.__accept_new_connection()
                 if client_sock:
                     p = Process(target=self.__handle_client_connection, args=(client_sock,))
+                    self._children.append(p)
                     p.daemon = True
                     p.start()
                 try: 
