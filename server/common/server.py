@@ -91,12 +91,8 @@ class Server:
         """
         try:
             agency = self.__recv_until_done(client_sock)
-            try:
-                index = self._barrier.wait()  
-            except BrokenBarrierError:
-                self.__send_shutdown(client_sock)
-                return
             
+            # First barrier: wait for all processes to finish sending batches
             index = self.__wait_or_shutdown(client_sock)
             if index is None:
                 return
@@ -104,9 +100,10 @@ class Server:
             if index == 0:
                 self.__draw_winners()
 
+            # Second barrier: wait until all the draws are done to send them at the same time
             if self.__wait_or_shutdown(client_sock) is None:
                 return
-            
+            # If the dictionary shared between processes is full with the winners, send the winners
             self.__send_winners(client_sock, agency)
         finally:
             try:
@@ -117,14 +114,14 @@ class Server:
     def __recv_until_done(self, sock):
         while True:
             try:
-                ptype = packet_type(sock)
+                t = packet_type(sock)
             except OSError as e:
                 logging.error(f"action: receive_message | result: fail | error: {e}")
                 return None
 
-            if ptype == TYPE_BET:
+            if t == TYPE_BET:
                 self.__process_bet(sock)
-            elif ptype == TYPE_DONE:
+            elif t == TYPE_DONE:
                 return self.__process_done(sock)
             else:
                 return None
@@ -133,6 +130,7 @@ class Server:
         bets = decode_bet_batch(client_sock)
         addr = client_sock.getpeername()
         logging.info(f'action: receive_message | result: success | ip: {addr[0]}')
+        # lock to work on the shared resource
         with self._io_lock:
             store_bets(bets)
         logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
@@ -151,6 +149,7 @@ class Server:
         for bet in load_bets():
             if has_won(bet):
                 winners_local[int(bet.agency)].append(int(bet.document))
+        # Dictionary shared between processes
         for ag, docs in winners_local.items():
             self._winners_shared[ag] = docs
         logging.info("action: sorteo | result: success")
