@@ -301,3 +301,8 @@ Se utilizan barreras (en específico 2) que bloquean los procesos hasta que haya
 * Cada proceso se encarga de recibir y procesar todas las apuestas de su cliente. Cuando se recibe un paquete del tipo TYPE_DONE, se corta el bucle y pasa a sincronizarse.
 * Tenemos una primer barrera para asegurar que todos hayan terminado de enviar las apuestas, algún proceso que llega (es random la elección) es el encargado de realizar el sorteo.
 * Se utiliza una segunda barrera para que todos esperen a que el sorteo se realice (se cargan los ganadores en la estructura `Manager().dict()`), cada hijo responde a su cliente con su lista de ganadores y cierra. De esta manera, cuando salen de la barrera todos tienen el resultado listo.
+
+Además, se utiliza un lock sobre `store_bets` para el manejo concurrente del recurso compartido, asegurando la exclusión mutua.
+
+Se agregaron las modificaciones pertinentes para que el cliente al recibir el byte 255, lo tome como una caída del servidor y cierre su ejecución de forma segura.
+
