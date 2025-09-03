@@ -131,7 +131,7 @@ func (c *Client) MakeBet(path string) bool {
 			if err != nil || !ok {
 				log.Infof("action: apuesta_enviada | result: fail | batch_size: %v", len(batch))
 				allSucceeded = false
-				break // cortar el loop si falló envío/ACK
+				break
 			}
 			log.Infof("action: apuesta_enviada | result: success | batch_size: %v", len(batch))
 			batch = batch[:0]
