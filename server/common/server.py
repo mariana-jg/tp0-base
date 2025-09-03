@@ -72,7 +72,6 @@ class Server:
                 if client_sock:
                     p = Process(target=self.__handle_client_connection, args=(client_sock,))
                     self._children.append(p)
-                    p.daemon = True
                     p.start()
                 try: 
                     client_sock.close()
