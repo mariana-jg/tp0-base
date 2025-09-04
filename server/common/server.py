@@ -77,7 +77,9 @@ class Server:
                     client_sock.close()
                 except OSError:
                     pass
+                self.__clean_processes()
             except socket.timeout:
+                self.__clean_processes()
                 continue
             except OSError:
                 break
@@ -166,6 +168,18 @@ class Server:
         except BrokenBarrierError:
             self.__send_shutdown(sock)
             return None
+
+    def __clean_processes(self):
+        alive = []
+        for p in self._children:
+            if p.is_alive():
+                alive.append(p)
+            else:
+                try:
+                    p.join(timeout=0)
+                except Exception:
+                    pass
+        self._children = alive
 
     def __accept_new_connection(self):
         """
