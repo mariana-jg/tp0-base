@@ -178,3 +178,159 @@ Se espera que se redacte una sección del README en donde se indique cómo ejecu
 Se proveen [pruebas automáticas](https://github.com/7574-sistemas-distribuidos/tp0-tests) de caja negra. Se exige que la resolución de los ejercicios pase tales pruebas, o en su defecto que las discrepancias sean justificadas y discutidas con los docentes antes del día de la entrega. El incumplimiento de las pruebas es condición de desaprobación, pero su cumplimiento no es suficiente para la aprobación. Respetar las entradas de log planteadas en los ejercicios, pues son las que se chequean en cada uno de los tests.
 
 La corrección personal tendrá en cuenta la calidad del código entregado y casos de error posibles, se manifiesten o no durante la ejecución del trabajo práctico. Se pide a los alumnos leer atentamente y **tener en cuenta** los criterios de corrección informados  [en el campus](https://campusgrado.fi.uba.ar/mod/page/view.php?id=73393).
+
+# Solución - Estudiante: Mariana Juarez Goldemberg - 108441
+
+### Ejercicio N°1:
+Para el cumplimiento de este ejercicio se crea el script de bash pedido `generar-compose.sh` el cual recibe los parámetros que se indicaron en la consigna, utilizando un script de Python (lo consideré una mejor alternativa que hacer todo en bash) `mi-generador.py` que se ejecuta utilizando esos parámetros.
+
+Dentro del script de Python se encuentran 3 constantes definidas para la generación del docker-compose:
+* HEADER: con el nombre del compose y y el header de la declaración de los servicios a levantar.
+* SERVER_BLOCK: con las definiciones necesarias para crear un container de un servidor.
+* NETWORK_BLOCK: con las definiciones para crear las redes utilizadas dentro del proyecto.
+
+Luego, para poder crear el container de la cantidad de clientes especificada por parámetro, se creó una función `client_block(n)` que permite definir un cliente según su número identificador, devolviendo el string formado para poder escribirlo en el archivo.
+
+Para cumplir con el objetivo del ejercicio, se abre el archivo (con `with open` para asegurar su cierre), se escriben las diferentes constantes con los bloques para formar el docker-compose, repitiendo la escritura del cliente con un ID desde 1 hasta la cantidad que llegue por parámetro + 1.
+
+#### Ejecución
+
+`./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
+
+### Ejercicio N°2:
+Para el cumplimiento de este ejercicio, dentro del script de Python `mi-generador.py`, se agregó como propiedad al servicio de cliente y servidor un `volumes`. Se configuró para que cada uno de los servicios tome su archivo de configuración (`config.yaml` para el cliente y `config.ini` para el servidor) como volume, para que la información de esos archivos se persista fuera del container. Además, se eliminaron las variables de entorno que tenían precedencia sobre los archivos de configuración. 
+
+#### Ejecución
+
+`./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`
+
+### Ejercicio N°3:
+Para el cumplimiento de este ejercicio, se crea el script de bash `validar-echo-server.sh` pedido, dentro del mismo se define un mensaje para enviar y se obtiene el puerto y la IP del servidor utilizando grep y extrayendo los valores. 
+
+Luego se lanza un contenedor efímero de busybox (imagen de linux minimalista) que ya trae incorporado netcat. Se conecta a la red interna `tp0_testing_net` y dentro del contenedor se ejecuta `"echo '$message' | nc $SERVER_IP $SERVER_PORT"`, con este comando se genera el mensaje y se manda a netcat, abriendo una conexión con el servidor y enviándole ese mensaje. `nc` devuelve lo que el servidor responda, guardándolo en la variable answer. Por último, se realiza la verificación de que el server devolvió el mismo mensaje.
+
+#### Ejecución
+
+`./validar-echo-server.sh`
+
+### Ejercicio N°4:
+Para el cumplimiento de este ejercicio, se modificaron los sistemas de cliente y servidor para que se logre un graceful shutdown al recibir `SIGTERM`. En la consigna, se recomienda investigar sobre el flag `-t` del comando `docker compose down`. Ese flag determina la espera en segundos que se da para que el proceso termine por su cuenta, si después de ese tiempo sigue vivo, Docker envía `SIGKILL`, matándolo inmediatamente.
+
+#### Servidor
+Se añade un nuevo flag `_running`, reemplazando el `while true` que controlaba el bucle principal. Ante la notificación de una señal SIGTERM (por ejemplo con `docker compose down -t <N>`), se llama a la función `shutdown(self, signum, frame)`, esta función pone en false el `running` y cierra el socket de escucha del server. Además, cierra todas las conexiones de clientes que sigan abiertas.
+
+Además, se configura `accept()` con `settimeout(1)` para que el servidor despierte periódicamente, detecte el shutdown y termine dentro del *tiempo de gracia* -t antes de que Docker envíe SIGKILL.
+
+#### Cliente
+Dentro del struct del cliente se define un canal de señales interno `done` que se utiliza para notificar el apagado del cliente. En la inicialización, se define un canal de señales del SO `signalChan`, que se le notificará cuando se envíe un SIGTERM, allí se define una go routine que corre en paralelo al bucle principal y espera un `SIGTERM` en `signalChan`. Cuando la señal llega, cierra el canal `done`, despertando al loop para que termine de forma ordenada.
+
+En la función principal del cliente, tenemos dos funciones que chequean el shutdown. La primera, `mustStop`, chequea antes de crear el socket del cliente y la segunda, `awaitShutdown`, asegura que el cliente no quede dormido si llega la señal (el select elige lo que pase primero: `done` se cierra o pasó el tiempo).
+
+#### Ejecución
+
+`make docker-compose-up`
+
+### Ejercicio N°5:
+
+Para el cumplimiento de este ejercicio, comencé con la definición de un protocolo de comunicación entre el cliente y el servidor en el directorio `/protocol` como `bet.go` . A continuación, describo la estructura de los datos que envía el cliente (serializados en big-endian) al servidor. Definí que el tamaño del paquete sea dinámico dada la naturaleza de la información.
+
+* Length del payload (2B): framing - tamaño total del payload (menos estos 2 bytes).
+* Identificador de agencia (1B): ID de la agencia (del cliente) que apuesta.
+* Length del nombre (2B): largo del nombre de la persona que apuesta. [Máx. 65535 bytes]
+* Nombre (Tamaño variable): nombre de la persona que apuesta.
+* Length del apellido (2B): largo del apellido de la persona que apuesta. [Máx. 65535 bytes]
+* Apellido (Tamaño variable): apellido de la persona que apuesta.
+* Documento (8B): DNI de la persona que realiza la apuesta.
+* Length de la fecha de nacimiento (2B): largo de la fecha de nacimiento de la persona que apuesta. [Máx. 65535 bytes]
+* Fecha de nacimiento (Tamaño variable): fecha de nacimiento de la persona que apuesta. En formato YYYY-MM-DD.
+* Número (2B): número apostado. 
+
+#### Servidor
+
+Se implementó el decodificador del lado del servidor una vez recibido el paquete dentro del archivo `protocol_codec.py`. Se leen los 2 bytes que identifican el largo del payload, luego exactamente se lee ese tamaño y se deserializa.
+Además, como pedía la consigna, se implementaron las funciones para evitar los short writes (para garantizar que todos los bytes se envíen) y short reads (para garantizar que se lea por completo el paquete). 
+
+##### Flujo del servidor
+* Registra el socket entrante.
+* Intenta leer y deserializar una apuesta del cliente.
+* Almacena la apuesta.
+* Envía un ACK (1B) al cliente (un "1").
+* Cierra la conexión.
+
+#### Cliente
+
+Se implementó la lógica de serialización y envío de la apuesta en el cliente. Cada cliente construye una estructura `Bet` con los datos provenientes de las variables de entorno proporcionadas, y luego utiliza el método `ToBytes()` definido en el módulo `protocol` para serializarlo.
+También se encuentran definidas las funciones para evitar los short writes y short reads.
+
+##### Flujo del cliente
+* Construye la apuesta a partir de las variables de entorno.
+* Serializa la apuesta, devuelve el paquete en formato binario `[Len(2B) + payload]`.
+* Abre un socket hacia el servidor.
+* Envía la apuesta al servidor.
+* Espera la confirmación del ACK.
+* Loguea el resultado de la operación y cierra la conexión con el servidor.
+
+#### Intento de reconexión en el cliente
+Se agregó dentro del cliente luego de consultar en clase el reintento de conexión. Intenta conectarse hasta una cantidad `MAX_TRIES` definida como una constante. Decidí hacerlo de esta manera y no setear el reintento desde el Docker Compose para que el cliente pueda reconectarse ante cortes transitorios sin matar el proceso.
+
+#### Ejecución
+
+`make docker-compose-up`
+
+### Ejercicio N°6:
+
+Para el cumplimiento de este ejercicio, realicé los siguientes agregados a la implementación:
+* Lectura de las apuestas en archivo .CSV.
+* Armado de los batches y serialización para que envíe el cliente.
+* Deserialización de los batches en el servidor.
+
+Para estos últimos dos puntos, se reutilizaron las funciones anteriores para las apuestas individuales.
+
+Además, un detalle a destacar, es el cambio en la implementación del protocolo ya que ahora lo que se envía no es solamente una apuesta individual, sino el batch como tira de bytes.
+
+Se abre un único socket hacia el servidor, se envían todas las apuestas y cuando se termina, se envía un mensaje de fin para cerrar la conexión.
+
+#### Ejecución
+
+`make docker-compose-up`
+
+### Ejercicio N°7:
+
+Para el cumplimiento de este ejercicio, el cambio principal fue dentro del protocolo de comunicación, ya que se agrego como primer componente de los paquetes un byte que identificaba el tipo:
+* TYPE_BET: para identificar a una apuesta que envía un cliente.
+* TYPE_DONE: para identificar que el cliente terminó de realizar todas las apuestas.
+
+Quedando el paquete enviado con esta estructura `[Type(1B) + Len(2B) + payload]`.
+
+El servidor cuando le llega un paquete, lee el tipo del mismo y a partir de allí:
+* Si es una apuesta, la procesa y envía un paquete de confirmación.
+* Si es un mensaje del cliente avisando que terminó, procede a cortar el bucle de lectura y verifica si la cantidad de clientes que terminaron era la esperada que se conectaran (se añadió que el server conozca la cantidad de clientes que se conectarán, cambio realizado en el `main.py` y en `mi-generador.py`). Si todos los clientes ya avisaron que terminaron y se encuentran esperando por el resultado del sorteo, el sorteo se realiza y se envían los resultados de los ganadores a los clientes, cerrando luego sus respectivas conexiones.
+
+#### Ejecución
+
+Para una sola agencia: `make docker-compose-up`.
+
+Si se desea ampliar la cantidad de clientes, primero `./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`.
+
+### Ejercicio N°8:
+
+Para el cumplimiento de este ejercicio, se utilizó la librería `multiprocessing` de Python utilizando `Process`, `Manager` y `Barrier` para evitar las limitaciones del GIL del lenguaje, trabajando con procesos independientes para manejar cada cliente.
+
+Se utilizan barreras (en específico 2) que bloquean los procesos hasta que hayan llegado exactamente los clientes esperados a ese mismo punto.
+
+##### Flujo del servidor concurrente
+
+* Para cada cliente se crea un proceso que corre en segundo plano.
+* Cada proceso se encarga de recibir y procesar todas las apuestas de su cliente. Cuando se recibe un paquete del tipo TYPE_DONE, se corta el bucle y pasa a sincronizarse.
+* Tenemos una primer barrera para asegurar que todos hayan terminado de enviar las apuestas, algún proceso que llega (es random la elección) es el encargado de realizar el sorteo.
+* Se utiliza una segunda barrera para que todos esperen a que el sorteo se realice (se cargan los ganadores en la estructura `Manager().dict()`), cada hijo responde a su cliente con su lista de ganadores y cierra. De esta manera, cuando salen de la barrera todos tienen el resultado listo.
+
+Además, se utiliza un lock sobre `store_bets` para el manejo concurrente del recurso compartido, asegurando la exclusión mutua.
+
+Se agregaron las modificaciones pertinentes para que el cliente al recibir el byte 255, lo tome como una caída del servidor y cierre su ejecución de forma segura.
+
+#### Ejecución
+
+Para una sola agencia: `make docker-compose-up`.
+
+Si se desea ampliar la cantidad de clientes, primero `./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`.
