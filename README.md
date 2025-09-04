@@ -209,6 +209,10 @@ Para el cumplimiento de este ejercicio, se crea el script de bash `validar-echo-
 
 Luego se lanza un contenedor efímero de busybox (imagen de linux minimalista) que ya trae incorporado netcat. Se conecta a la red interna `tp0_testing_net` y dentro del contenedor se ejecuta `"echo '$message' | nc $SERVER_IP $SERVER_PORT"`, con este comando se genera el mensaje y se manda a netcat, abriendo una conexión con el servidor y enviándole ese mensaje. `nc` devuelve lo que el servidor responda, guardándolo en la variable answer. Por último, se realiza la verificación de que el server devolvió el mismo mensaje.
 
+#### Ejecución
+
+`./validar-echo-server.sh`
+
 ### Ejercicio N°4:
 Para el cumplimiento de este ejercicio, se modificaron los sistemas de cliente y servidor para que se logre un graceful shutdown al recibir `SIGTERM`. En la consigna, se recomienda investigar sobre el flag `-t` del comando `docker compose down`. Ese flag determina la espera en segundos que se da para que el proceso termine por su cuenta, si después de ese tiempo sigue vivo, Docker envía `SIGKILL`, matándolo inmediatamente.
 
@@ -222,6 +226,10 @@ Dentro del struct del cliente se define un canal de señales interno `done` que 
 
 En la función principal del cliente, tenemos dos funciones que chequean el shutdown. La primera, `mustStop`, chequea antes de crear el socket del cliente y la segunda, `awaitShutdown`, asegura que el cliente no quede dormido si llega la señal (el select elige lo que pase primero: `done` se cierra o pasó el tiempo).
 
+#### Ejecución
+
+`make docker-compose-up`
+
 ### Ejercicio N°5:
 
 Para el cumplimiento de este ejercicio, comencé con la definición de un protocolo de comunicación entre el cliente y el servidor en el directorio `/protocol` como `bet.go` . A continuación, describo la estructura de los datos que envía el cliente (serializados en big-endian) al servidor. Definí que el tamaño del paquete sea dinámico dada la naturaleza de la información.
@@ -233,7 +241,8 @@ Para el cumplimiento de este ejercicio, comencé con la definición de un protoc
 * Length del apellido (2B): largo del apellido de la persona que apuesta. [Máx. 65535 bytes]
 * Apellido (Tamaño variable): apellido de la persona que apuesta.
 * Documento (8B): DNI de la persona que realiza la apuesta.
-* Fecha de nacimiento (10B): fecha de nacimiento de la persona que apuesta. Con formato "YYYY-MM-DD".
+* Length de la fecha de nacimiento (2B): largo de la fecha de nacimiento de la persona que apuesta. [Máx. 65535 bytes]
+* Fecha de nacimiento (Tamaño variable): fecha de nacimiento de la persona que apuesta. En formato YYYY-MM-DD.
 * Número (2B): número apostado. 
 
 #### Servidor
@@ -264,6 +273,10 @@ También se encuentran definidas las funciones para evitar los short writes y sh
 #### Intento de reconexión en el cliente
 Se agregó dentro del cliente luego de consultar en clase el reintento de conexión. Intenta conectarse hasta una cantidad `MAX_TRIES` definida como una constante. Decidí hacerlo de esta manera y no setear el reintento desde el Docker Compose para que el cliente pueda reconectarse ante cortes transitorios sin matar el proceso.
 
+#### Ejecución
+
+`make docker-compose-up`
+
 ### Ejercicio N°6:
 
 Para el cumplimiento de este ejercicio, realicé los siguientes agregados a la implementación:
@@ -277,6 +290,10 @@ Además, un detalle a destacar, es el cambio en la implementación del protocolo
 
 Se abre un único socket hacia el servidor, se envían todas las apuestas y cuando se termina, se envía un mensaje de fin para cerrar la conexión.
 
+#### Ejecución
+
+`make docker-compose-up`
+
 ### Ejercicio N°7:
 
 Para el cumplimiento de este ejercicio, el cambio principal fue dentro del protocolo de comunicación, ya que se agrego como primer componente de los paquetes un byte que identificaba el tipo:
@@ -288,6 +305,12 @@ Quedando el paquete enviado con esta estructura `[Type(1B) + Len(2B) + payload]`
 El servidor cuando le llega un paquete, lee el tipo del mismo y a partir de allí:
 * Si es una apuesta, la procesa y envía un paquete de confirmación.
 * Si es un mensaje del cliente avisando que terminó, procede a cortar el bucle de lectura y verifica si la cantidad de clientes que terminaron era la esperada que se conectaran (se añadió que el server conozca la cantidad de clientes que se conectarán, cambio realizado en el `main.py` y en `mi-generador.py`). Si todos los clientes ya avisaron que terminaron y se encuentran esperando por el resultado del sorteo, el sorteo se realiza y se envían los resultados de los ganadores a los clientes, cerrando luego sus respectivas conexiones.
+
+#### Ejecución
+
+Para una sola agencia: `make docker-compose-up`.
+
+Si se desea ampliar la cantidad de clientes, primero `./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`.
 
 ### Ejercicio N°8:
 
@@ -306,3 +329,8 @@ Además, se utiliza un lock sobre `store_bets` para el manejo concurrente del re
 
 Se agregaron las modificaciones pertinentes para que el cliente al recibir el byte 255, lo tome como una caída del servidor y cierre su ejecución de forma segura.
 
+#### Ejecución
+
+Para una sola agencia: `make docker-compose-up`.
+
+Si se desea ampliar la cantidad de clientes, primero `./generar-compose.sh <ARCHIVO_SALIDA> <CANTIDAD_DE_CLIENTES>`.
